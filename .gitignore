@@ -39,3 +39,9 @@
 
 # debug information files
 *.dwo
+
+# Pointcloud files
+*.pcd
+**/pcd/**
+**/bags/**
+.vscode

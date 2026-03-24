@@ -1,0 +1,6 @@
+[submodule "ws_lio_loc/src/scan_lock"]
+	path = ws_lio_loc/src/scan_lock
+	url = https://github.com/wdc3iii/ScanLock.git
+[submodule "ws_lio_loc/src/spark-fast-lio"]
+	path = ws_lio_loc/src/spark-fast-lio
+	url = https://github.com/wdc3iii/spark-fast-lio.git

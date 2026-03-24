@@ -1,0 +1,24 @@
+consolidation:
+  # Output folder prefix (timestamp will be appended as YYYY-MM-DD_HHmmss)
+  output_name: "lidar_map"
+
+  # Voxel filter applied during iterative cloud accumulation
+  intermediate_filter_enable: false
+  intermediate_voxel_size: 0.01
+
+  # Voxel filter applied to the final consolidated cloud
+  final_filter_enable: true
+  voxel_size: 0.05
+
+  # Delete source PCD files from spark-fast-lio after consolidation
+  delete_source_files: true
+
+  # Enable detailed progress logging
+  verbose: true
+
+# Source directory containing PCD files from spark-fast-lio
+# Path is relative to the directory where the executable is run
+source_pcd_dir: "src/spark-fast-lio/spark_fast_lio/PCD"
+
+# Output base directory where timestamped folders and maps are saved
+output_base_dir: "src/relocalization_bringup/pcd"
