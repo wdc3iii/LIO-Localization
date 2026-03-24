@@ -45,3 +45,8 @@
 **/pcd/**
 **/bags/**
 .vscode
+
+# build files
+**build/
+**install/
+**log/
