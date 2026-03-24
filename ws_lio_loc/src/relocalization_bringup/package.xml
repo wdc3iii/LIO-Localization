@@ -4,7 +4,7 @@
   <name>relocalization_bringup</name>
   <version>0.0.0</version>
   <description>Bringup package for relocalization with spark_fast_lio</description>
-  <maintainer email="wcompton@todo.todo">wcompton</maintainer>
+  <maintainer email="wdc3iii@gmail.com">Will Compton</maintainer>
   <license>MIT</license>
 
   <exec_depend>spark_fast_lio</exec_depend>
