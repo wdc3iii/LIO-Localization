@@ -39,6 +39,20 @@ source install/setup.bash
 
 ## Usage
 
+### Recording offline
+
+To record LiDAR data offline, simply source the `livox_ros_driver2`, launch the LiDAR unit, and record a rosbag:
+```bash
+source /path/to/livox_ros_driver2/install/setup.bash
+ros2 launch livox_ros_driver2 mid360.launch.py
+```
+
+```bash
+# Run from the repository root (LIO-Localization/)
+source /path/to/livox_ros_driver2/install/setup.bash
+ros2 bag record /livox/lidar /livox/imu -o ws_lio_loc/src/relocalization_bringup/bags
+```
+
 ### Mapping
 
 Launch the mapping node with a Livox Mid360:
@@ -66,6 +80,12 @@ ros2 run relocalization_bringup consolidate_map
 ```
 
 Configuration is in `relocalization_bringup/config/consolidate_map.yaml` — controls voxel filter sizes, output directory, and whether to delete source files after consolidation. Output maps are written to `relocalization_bringup/pcd/`.
+
+To visualize a map, make sure `pcl_viewer` is installed `sudo apt install pcl-tools`, and run 
+
+```bash
+pcl_viewer src/relocalization_bringup/pcd/<name>/map.pcd
+```
 
 ## Packages
 
