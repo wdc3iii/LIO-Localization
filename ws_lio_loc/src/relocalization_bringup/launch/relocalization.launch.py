@@ -14,6 +14,7 @@ def generate_launch_description():
 
     # Shared arguments
     use_sim_time = LaunchConfiguration('use_sim_time')
+    robot_name = LaunchConfiguration('robot_name')
 
     # spark_fast_lio arguments
     lio_config_path = LaunchConfiguration('lio_config_path')
@@ -52,6 +53,10 @@ def generate_launch_description():
         description='RViz config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
+        'robot_name', default_value='default',
+        description='Robot name for body frame selection (default, g1, go2)'
+    ))
+    ld.add_action(DeclareLaunchArgument(
         'scan_lock_config_path',
         default_value=os.path.join(scan_lock_path, 'config'),
         description='scan_lock config file path'
@@ -72,6 +77,7 @@ def generate_launch_description():
             'config_file': lio_config_file,
             'rviz': rviz,
             'rviz_cfg': rviz_cfg,
+            'robot_name': robot_name,
         }.items()
     ))
 
