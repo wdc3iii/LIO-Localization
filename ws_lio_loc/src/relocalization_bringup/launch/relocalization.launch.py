@@ -58,7 +58,7 @@ def generate_launch_description():
     ))
     ld.add_action(DeclareLaunchArgument(
         'scan_lock_config_path',
-        default_value=os.path.join(scan_lock_path, 'config'),
+        default_value=os.path.join(bringup_path, 'config'),
         description='scan_lock config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
