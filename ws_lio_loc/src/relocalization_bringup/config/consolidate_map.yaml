@@ -22,3 +22,4 @@ source_pcd_dir: "src/spark-fast-lio/spark_fast_lio/PCD"
 
 # Output base directory where timestamped folders and maps are saved
 output_base_dir: "src/relocalization_bringup/pcd"
+copy_dir: "src/scan_lock/pcd"

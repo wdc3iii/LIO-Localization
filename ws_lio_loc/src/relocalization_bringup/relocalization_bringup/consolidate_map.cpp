@@ -34,6 +34,7 @@ struct Config {
   bool verbose;
   std::string source_pcd_dir;
   std::string output_base_dir;
+  std::string copy_dir;
 };
 
 // Helper function to get current timestamp in YYYY-MM-DD_HHmmss format
@@ -110,6 +111,7 @@ Config loadConfig(const std::string& config_path) {
     config.verbose = yaml["consolidation"]["verbose"].as<bool>(true);
     config.source_pcd_dir = yaml["source_pcd_dir"].as<std::string>();
     config.output_base_dir = yaml["output_base_dir"].as<std::string>();
+    config.copy_dir = yaml["copy_dir"].as<std::string>("");
 
     return config;
   } catch (const std::exception& e) {
@@ -619,6 +621,22 @@ int main(int argc, char** argv) {
   if (!savePcd(consolidated, map_file)) {
     logMessage("ERROR", "Failed to save final map");
     return 1;
+  }
+
+  // Copy map to copy_dir if configured
+  if (!config.copy_dir.empty()) {
+    fs::path copy_dest = fs::absolute(config.copy_dir);
+    try {
+      if (!fs::exists(copy_dest)) {
+        fs::create_directories(copy_dest);
+      }
+      fs::path copy_file = copy_dest / "map.pcd";
+      logMessage("INFO", "Copying map to: " + copy_file.string(), config.verbose);
+      fs::copy_file(map_file, copy_file, fs::copy_options::overwrite_existing);
+      logMessage("INFO", "Map copied to " + copy_file.string());
+    } catch (const std::exception& e) {
+      logMessage("WARN", "Failed to copy map to copy_dir: " + std::string(e.what()));
+    }
   }
 
   logMessage("INFO", "");  // Blank line
