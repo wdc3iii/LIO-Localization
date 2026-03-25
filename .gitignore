@@ -43,7 +43,11 @@
 # Pointcloud files
 *.pcd
 **/pcd/**
+!**/pcd/**/.gitkeep
 **/bags/**
+!**/bags/**/.gitkeep
+**/outputs/**
+!**/outputs/**/.gitkeep
 .vscode
 
 # build files
