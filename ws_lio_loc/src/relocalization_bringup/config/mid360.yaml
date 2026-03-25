@@ -22,7 +22,7 @@
             enable_gravity_alignment: true
             g_base: [0.0, 0.0, -1.0]    # z-up convention
             imu_collection_duration_s: 1.0
-            heading_lidar: [0.866, 0.0, 0.5]
+            heading_lidar: [1.0, 0.0, 0.]
 
         preprocess:
             lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for any other pointcloud input
