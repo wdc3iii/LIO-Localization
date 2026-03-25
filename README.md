@@ -4,7 +4,7 @@ A ROS2 workspace for LiDAR-Inertial Odometry (LIO) based pointcloud map creation
 
 ## Prerequisites
 
-- **ROS2 Humble** (full desktop install)
+- **ROS2 Foxy** (full desktop install)
 - **Livox SDK2** — [Installation guide](https://github.com/Livox-SDK/Livox-SDK2)
 - **Livox ROS2 Driver** — [Installation guide](https://github.com/Livox-SDK/livox_ros_driver2)
 
