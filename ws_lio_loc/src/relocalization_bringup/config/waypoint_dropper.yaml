@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    waypoint_dropper:
+      pcd_file_name: "caltech_0/map.pcd"  # PCD filename (relative to scan_lock/pcd/)
+      map_viz_voxel_size: 0.25        # Voxel size (m) for map visualization downsample
+
+    frames:
+      map_frame: "map"                # Map frame (parent of odom)
+      body_frame: "body"              # Body frame (child of imu via static TF)
+
+    ground_estimation:
+      ground_search_radius_x: 5.0    # Half-width (m) for ground height search region
+      ground_search_radius_y: 5.0    # Half-width (m) for ground height search region
+      ground_percentile: 0.05        # Robust ground z (5th percentile of z values)
