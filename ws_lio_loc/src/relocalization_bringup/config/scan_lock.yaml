@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     scan_lock:
-      pcd_file_name: "caltech_0.pcd"  # PCD filename (relative to scan_lock/pcd/)
+      pcd_file_name: "amberlab_0.pcd"  # PCD filename (relative to scan_lock/pcd/)
       register_period_s: 5.0           # Local registration timer period (seconds)
       map_viz_voxel_size: 0.25         # Voxel size (m) for map visualization downsample
 
@@ -18,7 +18,7 @@
       use_default: false             # true = use x/y/z/rpy below; false = wait for /initialpose
       x: 0.0
       y: 0.0
-      z: 0.6                        # When use_default=false, this is body height above ground
+      z: 0.3                        # When use_default=false, this is body height above ground
       roll: 0.0                      # Default roll (radians), used in both modes
       pitch: 0.0                     # Default pitch (radians), used in both modes
       yaw: 0.0                       # Radians
