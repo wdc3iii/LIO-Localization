@@ -58,7 +58,7 @@ public:
     }
 
     std::string pcd_path = std::string(ROOT_DIR) + "pcd/" + pcd_file_name;
-    map_cloud_ = std::make_shared<PointCloud>();
+    map_cloud_ = PointCloud::Ptr(new PointCloud());
     if (pcl::io::loadPCDFile<PointType>(pcd_path, *map_cloud_) == -1) {
       RCLCPP_FATAL(get_logger(), "Failed to load PCD: %s",
                    pcd_path.c_str());
@@ -71,7 +71,7 @@ public:
     auto qos = rclcpp::QoS(1).transient_local();
     pub_map_ = create_publisher<sensor_msgs::msg::PointCloud2>("map_cloud", qos);
 
-    auto downsampled = std::make_shared<PointCloud>();
+    PointCloud::Ptr downsampled(new PointCloud());
     pcl::VoxelGrid<PointType> voxel;
     voxel.setInputCloud(map_cloud_);
     voxel.setLeafSize(map_voxel_size, map_voxel_size, map_voxel_size);

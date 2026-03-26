@@ -19,10 +19,9 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='imu_to_body_broadcaster',
             arguments=[
-                '--x', '0.01662', '--y', '0', '--z', '0.47589',
-                '--qx', '0.99985', '--qy', '0', '--qz', '-0.01745', '--qw', '0',
-                '--frame-id', 'imu',
-                '--child-frame-id', 'body',
+                '0.01662', '0', '0.47589',
+                '0.99985', '0', '-0.01745', '0',
+                'imu', 'body',
             ],
         ),
     ])
