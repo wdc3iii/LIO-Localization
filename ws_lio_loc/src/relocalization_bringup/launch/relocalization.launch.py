@@ -16,14 +16,27 @@ from launch_ros.descriptions import ComposableNode
 
 
 def _load_params(yaml_path):
-    """Load a ROS2 YAML parameter file, stripping the node name wrapper."""
+    """Load a ROS2 YAML parameter file and flatten to dot-separated keys."""
     with open(yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     # Strip /**:/ros__parameters or <node_name>:/ros__parameters
+    params = {}
     for key in data:
         if 'ros__parameters' in data[key]:
-            return data[key]['ros__parameters']
-    return {}
+            params = data[key]['ros__parameters']
+            break
+
+    def _flatten(d, prefix=''):
+        flat = {}
+        for k, v in d.items():
+            full_key = f'{prefix}{k}' if not prefix else f'{prefix}.{k}'
+            if isinstance(v, dict):
+                flat.update(_flatten(v, full_key))
+            else:
+                flat[full_key] = v
+        return flat
+
+    return _flatten(params)
 
 ROBOT_BODY_FRAME_LAUNCH = {
     'default': 'body_frame_default.launch.py',
