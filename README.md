@@ -174,3 +174,40 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
+## tmux
+
+A quick reference for common tmux operations. All commands start with the **prefix**: `Ctrl+b`
+
+### Starting and Stopping
+
+```bash
+tmux                           # Create new session (unnamed)
+tmux new-session -s name       # Create named session
+tmux kill-session -t name      # Kill a session
+tmux kill-server               # Kill all sessions
+```
+
+### Attaching and Detaching
+
+```bash
+tmux list-sessions             # List all sessions
+tmux attach-session -t name    # Attach to session
+```
+
+Once inside tmux:
+- `Prefix d` — detach from session (session keeps running)
+- `Prefix :kill-session` — kill current session
+
+### Splitting Panes
+
+- `Prefix "` — split horizontally (top/bottom)
+- `Prefix %` — split vertically (left/right)
+- `Prefix x` — close current pane
+- `Prefix arrow key` — navigate between panes
+
+### Other Basics
+
+- `Prefix c` — create new window
+- `Prefix n` / `Prefix p` — next/previous window
+- `Prefix [` — enter scroll/copy mode (exit with `q`)
+- `Prefix :` — enter command mode

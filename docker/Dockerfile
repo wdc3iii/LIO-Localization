@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     x11-apps \
     locales \
     iputils-ping \
+    tmux \
     sudo && \
     rm -rf /var/lib/apt/lists/* && \
     locale-gen en_US.UTF-8
