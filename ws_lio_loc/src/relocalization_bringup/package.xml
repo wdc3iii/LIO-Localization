@@ -8,6 +8,8 @@
   <license>MIT</license>
 
   <exec_depend>spark_fast_lio</exec_depend>
+  <exec_depend>scan_lock</exec_depend>
+  <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>rviz2</exec_depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
