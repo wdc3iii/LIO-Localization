@@ -202,8 +202,9 @@ Once inside tmux:
 
 - `Prefix "` — split horizontally (top/bottom)
 - `Prefix %` — split vertically (left/right)
-- `Prefix x` — close current pane
+- `Prefix x` — close current pane (will prompt y/n)
 - `Prefix arrow key` — navigate between panes
+- `Prefix z` — toggle zoom (fullscreen) on current pane
 
 ### Other Basics
 
