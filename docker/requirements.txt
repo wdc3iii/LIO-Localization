@@ -1,0 +1,7 @@
+torch==2.4.1
+rosbags
+matplotlib
+pandas
+scipy
+huggingface_hub
+casadi

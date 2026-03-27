@@ -1,0 +1,38 @@
+services:
+  lio_localization:
+    shm_size: '12gb'
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        USER: $USER
+        UID: $UID
+        GID: $UID
+        LIO_ROOT: $LIO_ROOT
+    network_mode: host
+    ipc: host
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: all
+      DISPLAY: $DISPLAY
+      USER: $USER
+      UID: $UID
+      GID: $UID
+      QT_X11_NO_MITSHM: 1
+      LIO_ROOT: $LIO_ROOT
+    security_opt:
+      - seccomp=unconfined
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - $LIO_ROOT:$LIO_ROOT
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - $HOME/.Xauthority:$HOME/.Xauthority:rw
+      - $HOME/.gitconfig:$HOME/.gitconfig
+      - $HOME/.ssh:$HOME/.ssh
+    ports:
+      - 7007:7007
+      - 10000:10000
+    privileged: true
+    working_dir: $LIO_ROOT
+    stdin_open: true
+    tty: true
