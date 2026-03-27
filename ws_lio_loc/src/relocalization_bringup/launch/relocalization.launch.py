@@ -38,6 +38,7 @@ def _load_params(yaml_path):
 
     return _flatten(params)
 
+
 ROBOT_BODY_FRAME_LAUNCH = {
     'default': 'body_frame_default.launch.py',
     'g1': 'body_frame_g1.launch.py',
@@ -102,16 +103,12 @@ def _launch_setup(context):
                     ('imu', '/livox/imu'),
                 ],
                 parameters=[lio_params],
-                extra_arguments=[
-                    {'use_intra_process_comms': True}],
             ),
             ComposableNode(
                 package='scan_lock',
                 plugin='scan_lock::ScanLockNode',
                 name='scan_lock',
                 parameters=[sl_params],
-                extra_arguments=[
-                    {'use_intra_process_comms': True}],
             ),
         ],
         output='screen',
