@@ -39,7 +39,7 @@ def generate_launch_description():
         description='spark_fast_lio config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
-        'lio_config_file', default_value='mid360.yaml',
+        'lio_config_file', default_value='mid360_relocalization.yaml',
         description='spark_fast_lio config file'
     ))
     ld.add_action(DeclareLaunchArgument(
