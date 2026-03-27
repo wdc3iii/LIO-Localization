@@ -69,7 +69,8 @@ RUN git clone https://github.com/Livox-SDK/Livox-SDK2.git && \
     mkdir build && cd build && \
     cmake .. && \
     make -j && \
-    sudo make install
+    sudo make install && \
+    sudo ldconfig
 
 # Build Livox ROS2 driver
 RUN mkdir -p /home/${USER}/livox_driver_ws/src && \
@@ -81,4 +82,5 @@ RUN mkdir -p /home/${USER}/livox_driver_ws/src && \
 
 # Auto-source ROS 2 and Livox driver on shell startup
 RUN echo 'source /opt/ros/humble/setup.bash' >> /home/${USER}/.bashrc && \
-    echo 'source /home/'"${USER}"'/livox_driver_ws/install/setup.bash' >> /home/${USER}/.bashrc
+    echo 'source /home/'"${USER}"'/livox_driver_ws/install/setup.bash' >> /home/${USER}/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=/home/'"${USER}"'/livox_driver_ws/install/livox_ros_driver2/lib:$LD_LIBRARY_PATH' >> /home/${USER}/.bashrc
