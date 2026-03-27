@@ -1,7 +1,7 @@
 {
     "name": "LIO No-GPU Dev Container",
     "dockerComposeFile": "../../docker/docker-compose-no-gpu.yml",
-    "service": "lio-localization",
+    "service": "lio_localization",
     "workspaceFolder": "${localWorkspaceFolder}",
     "shutdownAction": "stopCompose",
     "customizations": {

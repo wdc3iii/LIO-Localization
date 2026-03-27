@@ -1,7 +1,7 @@
 {
     "name": "LIO GPU Dev Container",
     "dockerComposeFile": "../../docker/docker-compose.yml",
-    "service": "lio-localization",
+    "service": "lio_localization",
     "workspaceFolder": "${localWorkspaceFolder}",
     "shutdownAction": "stopCompose",
     "customizations": {
