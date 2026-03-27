@@ -18,7 +18,7 @@ consolidation:
 
 # Source directory containing PCD files from spark-fast-lio
 # Path is relative to the directory where the executable is run
-source_pcd_dir: "src/spark-fast-lio/spark_fast_lio/PCD"
+source_pcd_dir: "src/spark-fast-lio/spark_fork/PCD"
 
 # Output base directory where timestamped folders and maps are saved
 output_base_dir: "src/relocalization_bringup/pcd"

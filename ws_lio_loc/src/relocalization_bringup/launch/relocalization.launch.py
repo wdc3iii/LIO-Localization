@@ -16,7 +16,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     robot_name = LaunchConfiguration('robot_name')
 
-    # spark_fast_lio arguments
+    # spark_fork arguments
     lio_config_path = LaunchConfiguration('lio_config_path')
     lio_config_file = LaunchConfiguration('lio_config_file')
     rviz = LaunchConfiguration('rviz')
@@ -36,11 +36,11 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument(
         'lio_config_path',
         default_value=os.path.join(bringup_path, 'config'),
-        description='spark_fast_lio config file path'
+        description='spark_fork config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
         'lio_config_file', default_value='mid360.yaml',
-        description='spark_fast_lio config file'
+        description='spark_fork config file'
     ))
     ld.add_action(DeclareLaunchArgument(
         'rviz', default_value='true',
@@ -66,7 +66,7 @@ def generate_launch_description():
         description='scan_lock config file'
     ))
 
-    # Launch spark_fast_lio via mapping.launch.py
+    # Launch spark_fork via mapping.launch.py
     ld.add_action(IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(bringup_path, 'launch', 'mapping.launch.py')

@@ -80,7 +80,26 @@ RUN mkdir -p /home/${USER}/livox_driver_ws/src && \
     source /opt/ros/humble/setup.sh && \
     ./build.sh humble
 
+# Build FAST_LIO for lidar odometry
+RUN source /opt/ros/humble/setup.sh && source /home/${USER}/livox_driver_ws/install/setup.sh && \
+    cd /home/${USER} && mkdir -p lidar_odom_ws/src && cd lidar_odom_ws/src && \
+    git clone -b ROS2 https://github.com/hku-mars/FAST_LIO.git --recursive && cd .. && \
+    sudo rosdep init && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --symlink-install
+
+# Build Spark for lidar odometry
+RUN source /opt/ros/humble/setup.sh && source /home/${USER}/livox_driver_ws/install/setup.sh && \
+    cd /home/${USER} && mkdir -p spark_ws/src && cd spark_ws/src && \
+    git clone https://github.com/MIT-SPARK/spark-fast-lio.git && cd .. && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --packages-up-to spark_fast_lio
+
 # Auto-source ROS 2 and Livox driver on shell startup
 RUN echo 'source /opt/ros/humble/setup.bash' >> /home/${USER}/.bashrc && \
     echo 'source /home/'"${USER}"'/livox_driver_ws/install/setup.bash' >> /home/${USER}/.bashrc && \
-    echo 'export LD_LIBRARY_PATH=/home/'"${USER}"'/livox_driver_ws/install/livox_ros_driver2/lib:$LD_LIBRARY_PATH' >> /home/${USER}/.bashrc
+    echo 'export LD_LIBRARY_PATH=/home/'"${USER}"'/livox_driver_ws/install/livox_ros_driver2/lib:$LD_LIBRARY_PATH' >> /home/${USER}/.bashrc && \
+    echo "source /home/${USER}/lidar_odom_ws/install/setup.bash" >> /home/${USER}/.bashrc && \
+    echo "source /home/${USER}/spark_ws/install/setup.bash" >> /home/${USER}/.bashrc

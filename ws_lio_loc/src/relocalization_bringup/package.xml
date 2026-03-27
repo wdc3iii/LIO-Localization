@@ -3,11 +3,11 @@
 <package format="3">
   <name>relocalization_bringup</name>
   <version>0.0.0</version>
-  <description>Bringup package for relocalization with spark_fast_lio</description>
+  <description>Bringup package for relocalization with spark_fork</description>
   <maintainer email="wdc3iii@gmail.com">Will Compton</maintainer>
   <license>MIT</license>
 
-  <exec_depend>spark_fast_lio</exec_depend>
+  <exec_depend>spark_fork</exec_depend>
   <exec_depend>rviz2</exec_depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

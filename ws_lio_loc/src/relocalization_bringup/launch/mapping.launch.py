@@ -35,11 +35,11 @@ def _include_body_frame(context):
 
 def generate_launch_description():
     bringup_path = get_package_share_directory('relocalization_bringup')
-    spark_fast_lio_path = get_package_share_directory('spark_fast_lio')
+    spark_fork_path = get_package_share_directory('spark_fork')
 
     default_config_path = os.path.join(bringup_path, 'config')
     default_rviz_config_path = os.path.join(
-        spark_fast_lio_path, 'rviz', 'fastlio.rviz')
+        spark_fork_path, 'rviz', 'fastlio.rviz')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     config_path = LaunchConfiguration('config_path')
@@ -73,7 +73,7 @@ def generate_launch_description():
     )
 
     spark_lio_node = Node(
-        package='spark_fast_lio',
+        package='spark_fork',
         executable='spark_lio_mapping',
         name='lio_mapping',
         remappings=[

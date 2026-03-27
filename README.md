@@ -71,6 +71,27 @@ Launch arguments:
 
 PCD scans are saved to `spark_fast_lio/PCD/` during mapping.
 
+### Upstream FAST_LIO
+
+To run the upstream (unmodified) FAST_LIO with the Mid360, source the `lidar_odom_ws` and point to the config in this repo:
+
+```bash
+source ~/lidar_odom_ws/install/setup.bash
+ros2 launch fast_lio mapping.launch.py \
+  config_path:=/home/$USER/repos/LIO-Localization/ws_lio_loc/src/relocalization_bringup/config \
+  config_file:=mid360_fastlio.yaml
+```
+
+### Upstream spark-fast-lio
+
+To run the upstream (unmodified) spark-fast-lio with the Mid360, source `spark_ws` only — do **not** source the local `ws_lio_loc` workspace, as the package names will conflict:
+
+```bash
+source ~/spark_ws/install/setup.bash
+ros2 launch spark_fast_lio mapping_mit_campus.launch.yaml \
+  config_path:=/home/$USER/repos/LIO-Localization/ws_lio_loc/src/relocalization_bringup/config/mid360_spark_upstream.yaml
+```
+
 ### Pointcloud Consolidation
 
 After mapping, consolidate the individual PCD scans into a single map:
