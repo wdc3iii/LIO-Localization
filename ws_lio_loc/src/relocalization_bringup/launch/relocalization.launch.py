@@ -3,9 +3,11 @@ import os.path
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
 
 from launch_ros.actions import ComposableNodeContainer, Node
@@ -34,22 +36,75 @@ def _include_body_frame(context):
             os.path.join(bringup_path, 'launch', launch_file)))]
 
 
+def _launch_setup(context):
+    """Resolve substitutions to concrete strings for ComposableNode parameters,
+    which don't resolve PathJoinSubstitution properly on Foxy."""
+    use_sim_time = context.launch_configurations['use_sim_time']
+    rviz_use = LaunchConfiguration('rviz')
+    rviz_cfg = LaunchConfiguration('rviz_cfg')
+
+    lio_config = os.path.join(
+        context.launch_configurations['lio_config_path'],
+        context.launch_configurations['lio_config_file'])
+    scan_lock_config = os.path.join(
+        context.launch_configurations['scan_lock_config_path'],
+        context.launch_configurations['scan_lock_config_file'])
+
+    # Composable node container with intra-process communication.
+    # This avoids DDS inter-process transport for shared topics
+    # (cloud_registered), which causes odometry degradation on
+    # resource-constrained hardware (Jetson) when multiple
+    # inter-process subscribers exist.
+    container = ComposableNodeContainer(
+        name='relocalization_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                package='spark_fast_lio',
+                plugin='spark_fast_lio::SPARKFastLIO2',
+                name='lio_mapping',
+                remappings=[
+                    ('lidar', '/livox/lidar'),
+                    ('imu', '/livox/imu'),
+                ],
+                parameters=[
+                    lio_config,
+                    {'use_sim_time': use_sim_time == 'true'},
+                ],
+                extra_arguments=[{'use_intra_process_comms': True}],
+            ),
+            ComposableNode(
+                package='scan_lock',
+                plugin='scan_lock::ScanLockNode',
+                name='scan_lock',
+                parameters=[
+                    scan_lock_config,
+                    {'use_sim_time': use_sim_time == 'true'},
+                ],
+                extra_arguments=[{'use_intra_process_comms': True}],
+            ),
+        ],
+        output='screen',
+    )
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', rviz_cfg],
+        condition=IfCondition(rviz_use)
+    )
+
+    return [container, rviz_node]
+
+
 def generate_launch_description():
     bringup_path = get_package_share_directory('relocalization_bringup')
 
     default_lio_config_path = os.path.join(bringup_path, 'config')
     default_rviz_config_path = os.path.join(
         get_package_share_directory('scan_lock'), 'rviz', 'scanlock.rviz')
-
-    # Launch configurations
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    robot_name = LaunchConfiguration('robot_name')
-    lio_config_path = LaunchConfiguration('lio_config_path')
-    lio_config_file = LaunchConfiguration('lio_config_file')
-    rviz_use = LaunchConfiguration('rviz')
-    rviz_cfg = LaunchConfiguration('rviz_cfg')
-    scan_lock_config_path = LaunchConfiguration('scan_lock_config_path')
-    scan_lock_config_file = LaunchConfiguration('scan_lock_config_file')
 
     ld = LaunchDescription()
 
@@ -89,54 +144,7 @@ def generate_launch_description():
         description='scan_lock config file'
     ))
 
-    # Composable node container with intra-process communication.
-    # This avoids DDS inter-process transport for shared topics (cloud_registered),
-    # which causes odometry degradation on resource-constrained hardware (Jetson)
-    # when multiple inter-process subscribers exist.
-    container = ComposableNodeContainer(
-        name='relocalization_container',
-        namespace='',
-        package='rclcpp_components',
-        executable='component_container',
-        composable_node_descriptions=[
-            ComposableNode(
-                package='spark_fast_lio',
-                plugin='spark_fast_lio::SPARKFastLIO2',
-                name='lio_mapping',
-                remappings=[
-                    ('lidar', '/livox/lidar'),
-                    ('imu', '/livox/imu'),
-                ],
-                parameters=[
-                    PathJoinSubstitution([lio_config_path, lio_config_file]),
-                    {'use_sim_time': use_sim_time},
-                ],
-                extra_arguments=[{'use_intra_process_comms': True}],
-            ),
-            ComposableNode(
-                package='scan_lock',
-                plugin='scan_lock::ScanLockNode',
-                name='scan_lock',
-                parameters=[
-                    PathJoinSubstitution(
-                        [scan_lock_config_path, scan_lock_config_file]),
-                    {'use_sim_time': use_sim_time},
-                ],
-                extra_arguments=[{'use_intra_process_comms': True}],
-            ),
-        ],
-        output='screen',
-    )
-
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        arguments=['-d', rviz_cfg],
-        condition=IfCondition(rviz_use)
-    )
-
-    ld.add_action(container)
-    ld.add_action(rviz_node)
+    ld.add_action(OpaqueFunction(function=_launch_setup))
     ld.add_action(OpaqueFunction(function=_include_body_frame))
 
     return ld
