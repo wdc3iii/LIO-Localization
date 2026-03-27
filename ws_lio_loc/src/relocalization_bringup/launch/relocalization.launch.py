@@ -1,4 +1,5 @@
 import os.path
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -12,6 +13,17 @@ from launch.conditions import IfCondition
 
 from launch_ros.actions import ComposableNodeContainer, Node
 from launch_ros.descriptions import ComposableNode
+
+
+def _load_params(yaml_path):
+    """Load a ROS2 YAML parameter file, stripping the node name wrapper."""
+    with open(yaml_path, 'r') as f:
+        data = yaml.safe_load(f)
+    # Strip /**:/ros__parameters or <node_name>:/ros__parameters
+    for key in data:
+        if 'ros__parameters' in data[key]:
+            return data[key]['ros__parameters']
+    return {}
 
 ROBOT_BODY_FRAME_LAUNCH = {
     'default': 'body_frame_default.launch.py',
@@ -37,18 +49,25 @@ def _include_body_frame(context):
 
 
 def _launch_setup(context):
-    """Resolve substitutions to concrete strings for ComposableNode parameters,
-    which don't resolve PathJoinSubstitution properly on Foxy."""
+    """Resolve paths and load YAML parameters for ComposableNodes.
+    Foxy's ComposableNode doesn't reliably load YAML file paths
+    passed in the parameters list, so we parse them in Python."""
     use_sim_time = context.launch_configurations['use_sim_time']
     rviz_use = LaunchConfiguration('rviz')
     rviz_cfg = LaunchConfiguration('rviz_cfg')
 
-    lio_config = os.path.join(
+    lio_yaml = os.path.join(
         context.launch_configurations['lio_config_path'],
         context.launch_configurations['lio_config_file'])
-    scan_lock_config = os.path.join(
+    scan_lock_yaml = os.path.join(
         context.launch_configurations['scan_lock_config_path'],
         context.launch_configurations['scan_lock_config_file'])
+
+    lio_params = _load_params(lio_yaml)
+    lio_params['use_sim_time'] = use_sim_time == 'true'
+
+    sl_params = _load_params(scan_lock_yaml)
+    sl_params['use_sim_time'] = use_sim_time == 'true'
 
     # Composable node container with intra-process communication.
     # This avoids DDS inter-process transport for shared topics
@@ -69,21 +88,17 @@ def _launch_setup(context):
                     ('lidar', '/livox/lidar'),
                     ('imu', '/livox/imu'),
                 ],
-                parameters=[
-                    lio_config,
-                    {'use_sim_time': use_sim_time == 'true'},
-                ],
-                extra_arguments=[{'use_intra_process_comms': True}],
+                parameters=[lio_params],
+                extra_arguments=[
+                    {'use_intra_process_comms': True}],
             ),
             ComposableNode(
                 package='scan_lock',
                 plugin='scan_lock::ScanLockNode',
                 name='scan_lock',
-                parameters=[
-                    scan_lock_config,
-                    {'use_sim_time': use_sim_time == 'true'},
-                ],
-                extra_arguments=[{'use_intra_process_comms': True}],
+                parameters=[sl_params],
+                extra_arguments=[
+                    {'use_intra_process_comms': True}],
             ),
         ],
         output='screen',
