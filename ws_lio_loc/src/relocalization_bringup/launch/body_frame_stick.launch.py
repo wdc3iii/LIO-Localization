@@ -12,19 +12,6 @@ def generate_launch_description():
     # imu_T_body = inverse of body_T_imu where body_T_imu = T(0,0,1) * Ry(30deg)
     # translation: Ry(-30deg) * (0, 0, -1) = (sin(30), 0, -cos(30)) = (0.5, 0, -0.866)
     # quaternion: Ry(-30deg) = (qx=0, qy=-0.25882, qz=0, qw=0.96593)
-    # return LaunchDescription([
-    #     Node(
-    #         package='tf2_ros',
-    #         executable='static_transform_publisher',
-    #         name='imu_to_body_broadcaster',
-    #         arguments=[
-    #             '--x', '0.5', '--y', '0', '--z', '-0.866',
-    #             '--qx', '0', '--qy', '-0.25882', '--qz', '0', '--qw', '0.96593',
-    #             '--frame-id', 'imu',
-    #             '--child-frame-id', 'body',
-    #         ],
-    #     ),
-    # ])
     return LaunchDescription([
         Node(
             package='tf2_ros',
@@ -32,9 +19,22 @@ def generate_launch_description():
             name='imu_to_body_broadcaster',
             arguments=[
                 '--x', '0.5', '--y', '0', '--z', '-0.866',
-                '--qx', '-0.18301', '--qy', '-0.18301', '--qz', '0.68301', '--qw', '0.68301',
+                '--qx', '0', '--qy', '-0.25882', '--qz', '0', '--qw', '0.96593',
                 '--frame-id', 'imu',
                 '--child-frame-id', 'body',
             ],
         ),
     ])
+    # return LaunchDescription([
+    #     Node(
+    #         package='tf2_ros',
+    #         executable='static_transform_publisher',
+    #         name='imu_to_body_broadcaster',
+    #         arguments=[
+    #             '--x', '0.5', '--y', '0', '--z', '-0.866',
+    #             '--qx', '-0.18301', '--qy', '-0.18301', '--qz', '0.68301', '--qw', '0.68301',
+    #             '--frame-id', 'imu',
+    #             '--child-frame-id', 'body',
+    #         ],
+    #     ),
+    # ])

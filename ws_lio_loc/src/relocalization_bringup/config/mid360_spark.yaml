@@ -12,16 +12,18 @@
         common:
             lid_topic:  "/livox/lidar"
             imu_topic:  "/livox/imu"
-            odom_frame: "odom"
+            lidar_frame: "livox_frame"
+            base_frame: "livox_frame"  # Same as lidar_frame; enables gravity alignment with identity extrinsic
             time_sync_en: false         # ONLY turn on when external time synchronization is really not possible
             time_offset_lidar_to_imu: 0.0 # Time offset between lidar and IMU calibrated by other algorithms, e.g. LI-Init (can be found in README).
                                         # This param will take effect no matter what time_sync_en is. So if the time offset is not known exactly, please set as 0.0
 
         gravity_alignment:
             enable_gravity_alignment: true
-            imu_collection_duration: 1.0
-            heading_lidar: [1.0, 0.0, 0.]
-            # heading_lidar: [-1.0, 0.0, 0.]
+            g_base: [0.0, 0.0, -1.0]    # z-up convention
+            imu_collection_duration_s: 1.0
+            # heading_lidar: [1.0, 0.0, 0.]
+            heading_lidar: [-1.0, 0.0, 0.]
             # heading_lidar: [0.0, 1.0, 0.0]
 
         preprocess:

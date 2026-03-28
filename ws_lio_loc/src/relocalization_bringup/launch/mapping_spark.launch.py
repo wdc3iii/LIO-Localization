@@ -35,11 +35,11 @@ def _include_body_frame(context):
 
 def generate_launch_description():
     bringup_path = get_package_share_directory('relocalization_bringup')
-    fast_lio_path = get_package_share_directory('fast_lio')
+    spark_fast_lio_path = get_package_share_directory('spark_fast_lio')
 
     default_config_path = os.path.join(bringup_path, 'config')
     default_rviz_config_path = os.path.join(
-        fast_lio_path, 'rviz', 'fastlio.rviz')
+        spark_fast_lio_path, 'rviz', 'fastlio.rviz')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     config_path = LaunchConfiguration('config_path')
@@ -56,7 +56,7 @@ def generate_launch_description():
         description='Yaml config file path'
     )
     declare_config_file_cmd = DeclareLaunchArgument(
-        'config_file', default_value='mid360.yaml',
+        'config_file', default_value='mid360_spark.yaml',
         description='Config file'
     )
     declare_rviz_cmd = DeclareLaunchArgument(
@@ -72,9 +72,14 @@ def generate_launch_description():
         description='Robot name for body frame selection (default, g1, go2)'
     )
 
-    fast_lio_node = Node(
-        package='fast_lio',
-        executable='fastlio_mapping',
+    spark_lio_node = Node(
+        package='spark_fast_lio',
+        executable='spark_lio_mapping',
+        name='lio_mapping',
+        remappings=[
+            ('lidar', '/livox/lidar'),
+            ('imu', '/livox/imu'),
+        ],
         parameters=[PathJoinSubstitution([config_path, config_file]),
                     {'use_sim_time': use_sim_time}],
         output='screen'
@@ -94,7 +99,7 @@ def generate_launch_description():
     ld.add_action(declare_rviz_config_path_cmd)
     ld.add_action(declare_robot_name_cmd)
 
-    ld.add_action(fast_lio_node)
+    ld.add_action(spark_lio_node)
     ld.add_action(rviz_node)
     ld.add_action(OpaqueFunction(function=_include_body_frame))
 
