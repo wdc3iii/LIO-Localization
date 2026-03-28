@@ -32,7 +32,9 @@ struct Config {
   float voxel_size;
   bool delete_source_files;
   bool verbose;
-  std::string source_pcd_dir;
+  std::string source_pcd_dir_fast_lio;
+  std::string source_pcd_dir_spark;
+  std::string source_pcd_dir;  // resolved at runtime based on --lio flag
   std::string output_base_dir;
   std::string copy_dir;
 };
@@ -98,7 +100,7 @@ Config loadConfig(const std::string& config_path) {
   try {
     YAML::Node yaml = YAML::LoadFile(config_path);
 
-    if (!yaml["consolidation"] || !yaml["source_pcd_dir"] || !yaml["output_base_dir"]) {
+    if (!yaml["consolidation"] || !yaml["output_base_dir"]) {
       throw std::runtime_error("Missing required configuration fields");
     }
 
@@ -109,7 +111,12 @@ Config loadConfig(const std::string& config_path) {
     config.voxel_size = yaml["consolidation"]["voxel_size"].as<float>(0.05f);
     config.delete_source_files = yaml["consolidation"]["delete_source_files"].as<bool>(true);
     config.verbose = yaml["consolidation"]["verbose"].as<bool>(true);
-    config.source_pcd_dir = yaml["source_pcd_dir"].as<std::string>();
+    config.source_pcd_dir_fast_lio = yaml["source_pcd_dir_fast_lio"].as<std::string>("src/FAST_LIO/PCD");
+    config.source_pcd_dir_spark = yaml["source_pcd_dir_spark"].as<std::string>("src/spark-fast-lio/spark_fast_lio/PCD");
+    // Legacy single-path support: if old "source_pcd_dir" key exists, use it as spark path
+    if (yaml["source_pcd_dir"]) {
+      config.source_pcd_dir_spark = yaml["source_pcd_dir"].as<std::string>();
+    }
     config.output_base_dir = yaml["output_base_dir"].as<std::string>();
     config.copy_dir = yaml["copy_dir"].as<std::string>("");
 
@@ -460,6 +467,7 @@ int main(int argc, char** argv) {
   std::string config_path;
   std::string source_override;
   std::string output_override;
+  std::string lio_backend = "fast-lio";  // default
   bool dry_run = false;
   auto start_time = std::chrono::steady_clock::now();
 
@@ -472,6 +480,8 @@ int main(int argc, char** argv) {
       source_override = argv[++i];
     } else if (arg == "--output" && i + 1 < argc) {
       output_override = argv[++i];
+    } else if (arg == "--lio" && i + 1 < argc) {
+      lio_backend = argv[++i];
     } else if (arg == "--dry-run") {
       dry_run = true;
     } else if (arg == "--help") {
@@ -479,12 +489,19 @@ int main(int argc, char** argv) {
                 << "Options:\n"
                 << "  --config PATH     Path to consolidate_map.yaml\n"
                 << "                    (default: src/relocalization_bringup/config/consolidate_map.yaml)\n"
+                << "  --lio BACKEND     LIO backend: 'fast-lio' or 'spark' (default: fast-lio)\n"
                 << "  --source PATH     Override source PCD directory\n"
                 << "  --output PATH     Override output base directory\n"
                 << "  --dry-run         Verify setup without processing\n"
                 << "  --help            Show this help message\n";
       return 0;
     }
+  }
+
+  // Validate --lio argument
+  if (lio_backend != "fast-lio" && lio_backend != "spark") {
+    logMessage("ERROR", "Invalid --lio value '" + lio_backend + "'. Must be 'fast-lio' or 'spark'.");
+    return 1;
   }
 
   if (config_path.empty()) {
@@ -499,6 +516,14 @@ int main(int argc, char** argv) {
   } catch (const std::exception&) {
     return 1;
   }
+
+  // Resolve source PCD directory from LIO backend selection
+  if (lio_backend == "fast-lio") {
+    config.source_pcd_dir = config.source_pcd_dir_fast_lio;
+  } else {
+    config.source_pcd_dir = config.source_pcd_dir_spark;
+  }
+  logMessage("INFO", "LIO backend: " + lio_backend);
 
   // Override paths if specified
   if (!source_override.empty()) {

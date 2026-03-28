@@ -4,3 +4,6 @@
 [submodule "ws_lio_loc/src/spark-fast-lio"]
 	path = ws_lio_loc/src/spark-fast-lio
 	url = https://github.com/wdc3iii/spark-fast-lio.git
+[submodule "ws_lio_loc/src/FAST_LIO"]
+	path = ws_lio_loc/src/FAST_LIO
+	url = git@github.com:wdc3iii/FAST_LIO.git

@@ -16,7 +16,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     robot_name = LaunchConfiguration('robot_name')
 
-    # fast_lio arguments
+    # spark_fast_lio arguments
     lio_config_path = LaunchConfiguration('lio_config_path')
     lio_config_file = LaunchConfiguration('lio_config_file')
     rviz = LaunchConfiguration('rviz')
@@ -36,11 +36,11 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument(
         'lio_config_path',
         default_value=os.path.join(bringup_path, 'config'),
-        description='fast_lio config file path'
+        description='spark_fast_lio config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
-        'lio_config_file', default_value='mid360_relocalization.yaml',
-        description='fast_lio config file'
+        'lio_config_file', default_value='mid360_relocalization_spark.yaml',
+        description='spark_fast_lio config file'
     ))
     ld.add_action(DeclareLaunchArgument(
         'rviz', default_value='true',
@@ -62,14 +62,14 @@ def generate_launch_description():
         description='scan_lock config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
-        'scan_lock_config_file', default_value='scan_lock.yaml',
+        'scan_lock_config_file', default_value='scan_lock_spark.yaml',
         description='scan_lock config file'
     ))
 
-    # Launch fast_lio via mapping.launch.py
+    # Launch spark_fast_lio via mapping_spark.launch.py
     ld.add_action(IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(bringup_path, 'launch', 'mapping.launch.py')
+            os.path.join(bringup_path, 'launch', 'mapping_spark.launch.py')
         ),
         launch_arguments={
             'use_sim_time': use_sim_time,

@@ -10,15 +10,16 @@ consolidation:
   final_filter_enable: true
   voxel_size: 0.05
 
-  # Delete source PCD files from spark-fast-lio after consolidation
+  # Delete source PCD files after consolidation
   delete_source_files: true
 
   # Enable detailed progress logging
   verbose: true
 
-# Source directory containing PCD files from spark-fast-lio
-# Path is relative to the directory where the executable is run
-source_pcd_dir: "src/spark-fast-lio/spark_fast_lio/PCD"
+# Source PCD directories per LIO backend (selected via --lio CLI arg)
+# Paths are relative to the directory where the executable is run
+source_pcd_dir_fast_lio: "src/FAST_LIO/PCD"
+source_pcd_dir_spark: "src/spark-fast-lio/spark_fast_lio/PCD"
 
 # Output base directory where timestamped folders and maps are saved
 output_base_dir: "src/relocalization_bringup/pcd"

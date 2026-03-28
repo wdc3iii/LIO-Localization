@@ -2,7 +2,7 @@
   ros__parameters:
     scan_lock:
       # pcd_file_name: "amberlab_0.pcd"  # PCD filename (relative to scan_lock/pcd/)
-      pcd_file_name: "caltech_1.pcd"  # PCD filename (relative to scan_lock/pcd/)
+      pcd_file_name: "caltech_y.pcd"  # PCD filename (relative to scan_lock/pcd/)
       register_period_s: 5.0           # Local registration timer period (seconds)
       map_viz_voxel_size: 0.25         # Voxel size (m) for map visualization downsample
       scan_max_range: 20.0             # Max range (m) for scan distance filter
@@ -14,9 +14,9 @@
 
     frames:
       map_frame: "map"               # Map frame (parent of odom)
-      odom_frame: "odom"             # Odom frame (published by fast_lio)
-      body_frame: "body"             # Body frame (child of imu via static TF)
-      imu_frame: "imu"              # IMU frame (child of odom, scan source frame)
+      odom_frame: "odom"             # Odom frame (published by spark_fast_lio)
+      body_frame: "livox_frame"      # Body frame (spark publishes odom -> livox_frame)
+      imu_frame: "livox_frame"       # Scan source frame (child of odom in spark TF tree)
 
     topics:
       lidar_topic: "cloud_registered"  # Point cloud topic to subscribe to
