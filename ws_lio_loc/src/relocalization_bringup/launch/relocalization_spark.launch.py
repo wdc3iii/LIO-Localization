@@ -3,9 +3,31 @@ import os.path
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+
+ROBOT_BODY_FRAME_LAUNCH = {
+    'default': 'body_frame_default.launch.py',
+    'g1': 'body_frame_g1.launch.py',
+    'go2': 'body_frame_go2.launch.py',
+    'stick': 'body_frame_stick.launch.py',
+}
+
+
+def _include_body_frame(context):
+    robot_name = context.launch_configurations['robot_name']
+    bringup_path = get_package_share_directory('relocalization_bringup')
+
+    launch_file = ROBOT_BODY_FRAME_LAUNCH.get(robot_name)
+    if launch_file is None:
+        raise RuntimeError(
+            f"Unknown robot_name '{robot_name}'. "
+            f"Valid options: {list(ROBOT_BODY_FRAME_LAUNCH.keys())}")
+
+    return [IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(bringup_path, 'launch', launch_file)))]
 
 
 def generate_launch_description():
@@ -77,9 +99,11 @@ def generate_launch_description():
             'config_file': lio_config_file,
             'rviz': rviz,
             'rviz_cfg': rviz_cfg,
-            'robot_name': robot_name,
         }.items()
     ))
+
+    # Launch body frame TF broadcaster
+    ld.add_action(OpaqueFunction(function=_include_body_frame))
 
     # Launch scan_lock via scan_lock.launch.py
     ld.add_action(IncludeLaunchDescription(

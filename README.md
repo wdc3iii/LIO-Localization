@@ -1,6 +1,6 @@
 # LIO-Localization
 
-A ROS2 workspace for LiDAR-Inertial Odometry (LIO) based pointcloud map creation and localization within a fixed pointcloud map. Built on [SPARK Fast-LIO2](https://github.com/MIT-SPARK/spark-fast-lio) with support for Livox, Velodyne, and Ouster LiDARs.
+A ROS2 workspace for LiDAR-Inertial Odometry (LIO) based pointcloud map creation and localization within a fixed pointcloud map. Two LIO backends are supported: [FAST-LIO2](https://github.com/hku-mars/FAST_LIO) and [SPARK Fast-LIO2](https://github.com/MIT-SPARK/spark-fast-lio). Works with Livox, Velodyne, and Ouster LiDARs.
 
 ## Prerequisites
 
@@ -39,9 +39,10 @@ source install/setup.bash
 
 ## Usage
 
-### Recording offline
+### Recording Offline
 
-To record LiDAR data offline, simply source the `livox_ros_driver2`, launch the LiDAR unit, and record a rosbag:
+To record LiDAR data offline, source the `livox_ros_driver2`, launch the LiDAR unit, and record a rosbag:
+
 ```bash
 source /path/to/livox_ros_driver2/install/setup.bash
 ros2 launch livox_ros_driver2 mid360.launch.py
@@ -55,35 +56,79 @@ ros2 bag record /livox/lidar /livox/imu -o ws_lio_loc/src/relocalization_bringup
 
 ### Mapping
 
-Launch the mapping node with a Livox Mid360:
+Two LIO backends are available for mapping. Both produce gravity-aligned, heading-zeroed odometry and save PCD scans for map consolidation.
+
+**FAST-LIO2 backend:**
 
 ```bash
 ros2 launch relocalization_bringup mapping.launch.py
 ```
 
-Launch arguments:
+**SPARK Fast-LIO2 backend:**
+
+```bash
+ros2 launch relocalization_bringup mapping_spark.launch.py
+```
+
+Launch arguments (both mapping launches):
 
 | Argument | Default | Description |
 |---|---|---|
 | `use_sim_time` | `false` | Set `true` for bag replay |
-| `config_file` | `mid360.yaml` | Sensor configuration file |
+| `config_path` | `<bringup>/config` | Path to config directory |
+| `config_file` | `mid360.yaml` / `mid360_spark.yaml` | Sensor config file |
 | `rviz` | `true` | Launch RViz visualization |
+| `rviz_cfg` | `fastlio.rviz` | RViz config file path |
 
-PCD scans are saved to `spark_fast_lio/PCD/` during mapping.
+### Relocalization
+
+Relocalization combines a LIO backend with `scan_lock` to localize within a prior pointcloud map. It also broadcasts a body frame TF based on the robot platform.
+
+**FAST-LIO2 backend:**
+
+```bash
+ros2 launch relocalization_bringup relocalization.launch.py robot_name:=go2
+```
+
+**SPARK Fast-LIO2 backend:**
+
+```bash
+ros2 launch relocalization_bringup relocalization_spark.launch.py robot_name:=go2
+```
+
+Launch arguments (both relocalization launches):
+
+| Argument | Default | Description |
+|---|---|---|
+| `use_sim_time` | `false` | Set `true` for bag replay |
+| `robot_name` | `default` | Robot platform (`default`, `g1`, `go2`, `stick`) |
+| `lio_config_path` | `<bringup>/config` | LIO config directory |
+| `lio_config_file` | `mid360_relocalization.yaml` / `mid360_relocalization_spark.yaml` | LIO config file |
+| `scan_lock_config_path` | `<bringup>/config` | scan_lock config directory |
+| `scan_lock_config_file` | `scan_lock.yaml` / `scan_lock_spark.yaml` | scan_lock config file |
+| `rviz` | `true` | Launch RViz visualization |
+| `rviz_cfg` | `scanlock.rviz` | RViz config file path |
+
+In RViz, use the **2D Pose Estimate** tool to provide an initial pose guess on the `/initialpose` topic. `scan_lock` will refine the estimate via ICP registration.
 
 ### Pointcloud Consolidation
 
 After mapping, consolidate the individual PCD scans into a single map:
 
 ```bash
-ros2 run relocalization_bringup consolidate_map
+# Run from ws_lio_loc/
+ros2 run relocalization_bringup consolidate_map --lio fast_lio
+ros2 run relocalization_bringup consolidate_map --lio spark
 ```
 
-Configuration is in `relocalization_bringup/config/consolidate_map.yaml` — controls voxel filter sizes, output directory, and whether to delete source files after consolidation. Output maps are written to `relocalization_bringup/pcd/`.
+The `--lio` argument selects which backend's PCD directory to read from (`FAST_LIO/PCD/` or `spark_fast_lio/PCD/`).
 
-To visualize a map, make sure `pcl_viewer` is installed `sudo apt install pcl-tools`, and run 
+Configuration is in `relocalization_bringup/config/consolidate_map.yaml` — controls voxel filter sizes, output directory, and whether to delete source files after consolidation. Output maps are written to `relocalization_bringup/pcd/` and copied to `scan_lock/pcd/`.
+
+To visualize a map:
 
 ```bash
+sudo apt install pcl-tools  # one-time install
 pcl_viewer src/relocalization_bringup/pcd/<name>/map.pcd
 ```
 
@@ -91,8 +136,9 @@ pcl_viewer src/relocalization_bringup/pcd/<name>/map.pcd
 
 | Package | Description |
 |---|---|
-| **spark_fast_lio** | SPARK Fast-LIO2 mapping engine (LiDAR-inertial SLAM) |
-| **scan_lock** | Scan matching for localization within a prior map |
+| **fast_lio** | FAST-LIO2 mapping engine (LiDAR-inertial odometry) |
+| **spark_fast_lio** | SPARK Fast-LIO2 mapping engine (LiDAR-inertial odometry) |
+| **scan_lock** | ICP-based localization within a prior pointcloud map |
 | **relocalization_bringup** | Launch files, sensor configs, and map consolidation tools |
 
 ## Docker
