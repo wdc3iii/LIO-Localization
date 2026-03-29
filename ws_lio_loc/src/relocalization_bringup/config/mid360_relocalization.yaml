@@ -20,9 +20,7 @@
         gravity_alignment:
             enable_gravity_alignment: true
             imu_collection_duration: 1.0
-            # heading_lidar: [1.0, 0.0, 0.]
-            # heading_lidar: [-1.0, 0.0, 0.]
-            heading_lidar: [0.0, 1.0, 0.0]
+            heading_lidar: [-1.0, 0.0, 0.]
 
         preprocess:
             lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for any other pointcloud input

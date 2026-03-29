@@ -1,82 +1,122 @@
 # relocalization_bringup
 
-Bringup package for relocalization with `spark_fast_lio`.
+Bringup package for mapping and relocalization with two LIO backends: `fast_lio` (FAST-LIO2) and `spark_fast_lio` (SPARK Fast-LIO2).
 
 ## Package Structure
 
 ```
 relocalization_bringup/
 ├── bags/          # Bag files for replay
-├── pcd/           # PCD output from spark_fast_lio
-├── config/        # Sensor configuration files
+├── pcd/           # Consolidated maps from consolidate_map
+├── config/        # Sensor and scan_lock configuration files
 └── launch/        # Launch files
 ```
 
+## Configuration Files
+
+| File | Used by | Description |
+|---|---|---|
+| `mid360.yaml` | `mapping.launch.py` | FAST-LIO2 mapping config |
+| `mid360_spark.yaml` | `mapping_spark.launch.py` | SPARK Fast-LIO2 mapping config |
+| `mid360_relocalization.yaml` | `relocalization.launch.py` | FAST-LIO2 relocalization config |
+| `mid360_relocalization_spark.yaml` | `relocalization_spark.launch.py` | SPARK Fast-LIO2 relocalization config |
+| `scan_lock.yaml` | `relocalization.launch.py` | scan_lock config for FAST-LIO2 pipeline |
+| `scan_lock_spark.yaml` | `relocalization_spark.launch.py` | scan_lock config for SPARK pipeline |
+| `consolidate_map.yaml` | `consolidate_map` | Map consolidation settings |
+
 ## Usage
 
-### Launch spark_fast_lio
+### Mapping
+
+**FAST-LIO2 backend:**
 
 ```bash
 ros2 launch relocalization_bringup mapping.launch.py
 ```
 
-To launch without rviz:
+**SPARK Fast-LIO2 backend:**
+
+```bash
+ros2 launch relocalization_bringup mapping_spark.launch.py
+```
+
+To launch without RViz:
 
 ```bash
 ros2 launch relocalization_bringup mapping.launch.py rviz:=false
 ```
 
-### Replay a bag file
+#### Replay a bag file
 
-In one terminal, launch spark_fast_lio with sim time enabled:
+In one terminal, launch mapping with sim time:
 
 ```bash
 ros2 launch relocalization_bringup mapping.launch.py use_sim_time:=true
 ```
 
-In a second terminal, play the bag with `--clock` so it publishes the `/clock` topic:
+In a second terminal, play the bag with `--clock`:
 
 ```bash
 ros2 bag play bags/<your_bag> --clock
 ```
 
-### Launch Arguments
+#### Mapping Launch Arguments
 
-| Argument       | Default          | Description                          |
-|----------------|------------------|--------------------------------------|
-| `use_sim_time` | `false`          | Use simulation clock (for bag replay)|
-| `config_path`  | `<package>/config` | Path to config directory           |
-| `config_file`  | `mid360.yaml`    | Config file name                     |
-| `rviz`         | `true`           | Launch rviz                          |
-| `rviz_cfg`     | `fastlio.rviz`   | RViz config file path                |
+| Argument | Default | Description |
+|---|---|---|
+| `use_sim_time` | `false` | Use simulation clock (for bag replay) |
+| `config_path` | `<package>/config` | Path to config directory |
+| `config_file` | `mid360.yaml` / `mid360_spark.yaml` | Config file name |
+| `rviz` | `true` | Launch RViz |
+| `rviz_cfg` | `fastlio.rviz` | RViz config file path |
+
+### Relocalization
+
+Relocalization launches a LIO backend, a body frame TF broadcaster, and `scan_lock` for localization within a prior pointcloud map.
+
+**FAST-LIO2 backend:**
+
+```bash
+ros2 launch relocalization_bringup relocalization.launch.py robot_name:=go2
+```
+
+**SPARK Fast-LIO2 backend:**
+
+```bash
+ros2 launch relocalization_bringup relocalization_spark.launch.py robot_name:=go2
+```
+
+In RViz, use the **2D Pose Estimate** tool to provide an initial pose guess. `scan_lock` will refine the estimate via ICP registration.
+
+#### Relocalization Launch Arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `use_sim_time` | `false` | Use simulation clock (for bag replay) |
+| `robot_name` | `default` | Robot platform (`default`, `g1`, `go2`, `stick`) |
+| `lio_config_path` | `<package>/config` | LIO config directory |
+| `lio_config_file` | `mid360_relocalization.yaml` / `mid360_relocalization_spark.yaml` | LIO config file |
+| `scan_lock_config_path` | `<package>/config` | scan_lock config directory |
+| `scan_lock_config_file` | `scan_lock.yaml` / `scan_lock_spark.yaml` | scan_lock config file |
+| `rviz` | `true` | Launch RViz |
+| `rviz_cfg` | `scanlock.rviz` | RViz config file path |
 
 ### Consolidate PCD Map
 
-After running spark_fast_lio, consolidate the saved PCD scans into a single voxel-filtered map:
+After mapping, consolidate saved PCD scans into a single voxel-filtered map:
 
 ```bash
-cd ~/repos/ws_spark
-./install/relocalization_bringup/lib/relocalization_bringup/consolidate_map
+# Run from ws_lio_loc/
+ros2 run relocalization_bringup consolidate_map --lio fast_lio
+ros2 run relocalization_bringup consolidate_map --lio spark
 ```
 
-This uses the default config at `src/relocalization_bringup/config/consolidate_map.yaml`. To specify a different config:
-
-```bash
-./install/relocalization_bringup/lib/relocalization_bringup/consolidate_map --config path/to/config.yaml
-```
-
-The tool will:
-1. Create a timestamped folder in `src/relocalization_bringup/pcd/` (e.g., `lidar_map_2026-03-24_135658/`)
-2. Copy all PCD files from `spark_fast_lio/PCD/` into that folder
-3. Load each scan, optionally apply an intermediate voxel filter, and accumulate into a single cloud
-4. Optionally apply a final voxel filter
-5. Save the result as `map.pcd`
-6. Optionally delete the source PCD files
+The `--lio` argument selects which backend's PCD directory to read from. Output maps are written to `relocalization_bringup/pcd/` and copied to `scan_lock/pcd/`.
 
 To verify setup without processing:
 
 ```bash
-./install/relocalization_bringup/lib/relocalization_bringup/consolidate_map --dry-run
+ros2 run relocalization_bringup consolidate_map --lio fast_lio --dry-run
 ```
 
 #### Configuration (`consolidate_map.yaml`)
@@ -84,20 +124,18 @@ To verify setup without processing:
 | Parameter | Default | Description |
 |---|---|---|
 | `output_name` | `"lidar_map"` | Folder name prefix (timestamp appended) |
-| `intermediate_filter_enable` | `true` | Enable voxel filter on each scan during accumulation |
+| `intermediate_filter_enable` | `false` | Enable voxel filter on each scan during accumulation |
 | `intermediate_voxel_size` | `0.01` | Leaf size (m) for intermediate filter |
 | `final_filter_enable` | `true` | Enable voxel filter on the consolidated cloud |
 | `voxel_size` | `0.05` | Leaf size (m) for final filter |
 | `delete_source_files` | `true` | Delete source PCD files after consolidation |
-| `verbose` | `true` | Print detailed progress |
-| `source_pcd_dir` | `src/spark-fast-lio/spark_fast_lio/PCD` | Source PCD directory (relative to CWD) |
-| `output_base_dir` | `src/relocalization_bringup/pcd` | Output directory (relative to CWD) |
 
 #### CLI Options
 
 | Option | Description |
 |---|---|
-| `--config PATH` | Path to config YAML (default: `src/relocalization_bringup/config/consolidate_map.yaml`) |
+| `--lio {fast_lio,spark}` | Select LIO backend PCD source directory |
+| `--config PATH` | Path to config YAML |
 | `--source PATH` | Override source PCD directory |
 | `--output PATH` | Override output base directory |
 | `--dry-run` | Validate setup without processing |
@@ -111,5 +149,6 @@ pcl_viewer src/relocalization_bringup/pcd/lidar_map_*/map.pcd
 
 ## Notes
 
-- PCD saving is enabled in the default config (`mid360.yaml`). spark_fast_lio saves PCD files to `<spark_fast_lio_source>/PCD/` (hardcoded at compile time), not to this package's `pcd/` directory.
+- PCD saving is enabled in the default mapping configs. FAST-LIO2 saves to `FAST_LIO/PCD/` and SPARK Fast-LIO2 saves to `spark_fast_lio/PCD/`.
 - The `bags/` directory is provided as a convenient location to store bag files for replay.
+- Body frame TF broadcasting is only launched during relocalization, not mapping.
