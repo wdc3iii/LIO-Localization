@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     vim \
     git \
     libeigen3-dev \
+    libboost-all-dev \
+    libyaml-cpp-dev \
     x11-apps \
     locales \
     iputils-ping \
@@ -80,7 +82,15 @@ RUN mkdir -p /home/${USER}/livox_driver_ws/src && \
     source /opt/ros/humble/setup.sh && \
     ./build.sh humble
 
+RUN mkdir -p /home/${USER}/ws_hesai/src && \
+    cd /home/${USER}/ws_hesai/src && \
+    git clone --recurse-submodules https://github.com/HesaiTechnology/HesaiLidar_ROS_2.0.git && \
+    cd /home/${USER}/ws_hesai && \
+    source /opt/ros/humble/setup.sh && \
+    colcon build --symlink-install
+
 # Auto-source ROS 2 and Livox driver on shell startup
 RUN echo 'source /opt/ros/humble/setup.bash' >> /home/${USER}/.bashrc && \
     echo 'source /home/'"${USER}"'/livox_driver_ws/install/setup.bash' >> /home/${USER}/.bashrc && \
+    echo 'source /home/'"${USER}"'/ws_hesai/install/setup.bash' >> /home/${USER}/.bashrc && \
     echo 'export LD_LIBRARY_PATH=/home/'"${USER}"'/livox_driver_ws/install/livox_ros_driver2/lib:$LD_LIBRARY_PATH' >> /home/${USER}/.bashrc
