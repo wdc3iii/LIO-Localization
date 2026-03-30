@@ -62,6 +62,7 @@ install(TARGETS consolidate_map waypoint_dropper
 install(DIRECTORY
   config
   launch
+  resource
   DESTINATION share/${PROJECT_NAME}
 )
 

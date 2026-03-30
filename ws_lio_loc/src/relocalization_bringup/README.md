@@ -16,28 +16,56 @@ relocalization_bringup/
 
 | File | Used by | Description |
 |---|---|---|
-| `mid360.yaml` | `mapping.launch.py` | FAST-LIO2 mapping config |
-| `mid360_spark.yaml` | `mapping_spark.launch.py` | SPARK Fast-LIO2 mapping config |
-| `mid360_relocalization.yaml` | `relocalization.launch.py` | FAST-LIO2 relocalization config |
-| `mid360_relocalization_spark.yaml` | `relocalization_spark.launch.py` | SPARK Fast-LIO2 relocalization config |
+| `mid360.yaml` | `mapping.launch.py` | FAST-LIO2 mapping config (MID360) |
+| `mid360_spark.yaml` | `mapping_spark.launch.py` | SPARK Fast-LIO2 mapping config (MID360) |
+| `mid360_relocalization.yaml` | `relocalization.launch.py` | FAST-LIO2 relocalization config (MID360) |
+| `mid360_relocalization_spark.yaml` | `relocalization_spark.launch.py` | SPARK Fast-LIO2 relocalization config (MID360) |
+| `hesaiJT128.yaml` | `mapping.launch.py`, `relocalization.launch.py` | FAST-LIO2 config for Hesai JT128 |
+| `hesaiJT128_driver.yaml` | `hesaiJT128.launch.py` | Hesai ROS driver config (UDP, correction file paths) |
 | `scan_lock.yaml` | `relocalization.launch.py` | scan_lock config for FAST-LIO2 pipeline |
 | `scan_lock_spark.yaml` | `relocalization_spark.launch.py` | scan_lock config for SPARK pipeline |
 | `consolidate_map.yaml` | `consolidate_map` | Map consolidation settings |
+
+## Lidar Drivers
+
+The lidar driver must be launched in a separate terminal before running mapping or relocalization.
+
+**Livox MID360:**
+
+```bash
+ros2 launch relocalization_bringup mid360.launch.py
+```
+
+**Hesai JT128:**
+
+```bash
+ros2 launch relocalization_bringup hesaiJT128.launch.py
+```
+
+> Before running the Hesai driver, verify that `correction_file_path` and `firetimes_path` in `config/hesaiJT128_driver.yaml` point to the correct calibration files on your machine.
 
 ## Usage
 
 ### Mapping
 
-**FAST-LIO2 backend:**
+First launch the lidar driver (see above), then in a second terminal:
+
+**MID360 + FAST-LIO2:**
 
 ```bash
 ros2 launch relocalization_bringup mapping.launch.py
 ```
 
-**SPARK Fast-LIO2 backend:**
+**MID360 + SPARK Fast-LIO2:**
 
 ```bash
 ros2 launch relocalization_bringup mapping_spark.launch.py
+```
+
+**Hesai JT128 + FAST-LIO2:**
+
+```bash
+ros2 launch relocalization_bringup mapping.launch.py config_file:=hesaiJT128.yaml
 ```
 
 To launch without RViz:
@@ -72,18 +100,26 @@ ros2 bag play bags/<your_bag> --clock
 
 ### Relocalization
 
+First launch the lidar driver (see above), then in a second terminal:
+
 Relocalization launches a LIO backend, a body frame TF broadcaster, and `scan_lock` for localization within a prior pointcloud map.
 
-**FAST-LIO2 backend:**
+**MID360 + FAST-LIO2:**
 
 ```bash
 ros2 launch relocalization_bringup relocalization.launch.py robot_name:=go2
 ```
 
-**SPARK Fast-LIO2 backend:**
+**MID360 + SPARK Fast-LIO2:**
 
 ```bash
 ros2 launch relocalization_bringup relocalization_spark.launch.py robot_name:=go2
+```
+
+**Hesai JT128 + FAST-LIO2:**
+
+```bash
+ros2 launch relocalization_bringup relocalization.launch.py robot_name:=go2 lio_config_file:=hesaiJT128.yaml
 ```
 
 In RViz, use the **2D Pose Estimate** tool to provide an initial pose guess. `scan_lock` will refine the estimate via ICP registration.
