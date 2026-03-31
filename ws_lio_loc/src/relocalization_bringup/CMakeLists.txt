@@ -9,6 +9,8 @@ find_package(pcl_conversions REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(interactive_markers REQUIRED)
 
 # Add consolidate_map executable
 add_executable(consolidate_map
@@ -47,6 +49,8 @@ ament_target_dependencies(waypoint_dropper
   rclcpp
   sensor_msgs
   geometry_msgs
+  visualization_msgs
+  interactive_markers
   pcl_conversions
   tf2
 )
@@ -63,6 +67,7 @@ install(DIRECTORY
   config
   launch
   resource
+  rviz
   DESTINATION share/${PROJECT_NAME}
 )
 
