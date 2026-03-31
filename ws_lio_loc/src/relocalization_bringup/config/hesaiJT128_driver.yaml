@@ -9,7 +9,7 @@ lidar:
         ptc_port: 9347                                # PTC port of lidar
         multicast_ip_address: 
 
-        use_ptc_connected: false                       # Set to false when ptc connection is not used
+        use_ptc_connected: true                       # Set to false when ptc connection is not used
         host_ptc_port: 0                              # PTC source port, 0 means auto
         correction_file_path: ""   # Set at launch time from package resource/
         firetimes_path: ""         # Set at launch time from package resource/
@@ -21,7 +21,7 @@ lidar:
         fault_message_port: 0
 
         standby_mode: -1                              # The standby mode: [-1] is invalit [0] in operation [1] standby
-        speed: -1                                     # The speed: [-1] invalit, you must make sure your set has been supported by the lidar you are using
+        speed: 1200                                     # The speed: [-1] invalit, you must make sure your set has been supported by the lidar you are using
         ptc_mode: 0                                   # The ptc mode: [0] tcp [1] tcp_ssl
         # tcp_ssl use
         certFile: ""                                  # Represents the path of the user's certificate
