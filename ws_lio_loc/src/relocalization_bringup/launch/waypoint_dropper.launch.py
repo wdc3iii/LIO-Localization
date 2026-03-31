@@ -63,7 +63,7 @@ def generate_launch_description():
     ))
     ld.add_action(DeclareLaunchArgument(
         'rviz_cfg',
-        default_value=os.path.join(scan_lock_path, 'rviz', 'scanlock.rviz'),
+        default_value=os.path.join(bringup_path, 'rviz', 'waypoint.rviz'),
         description='RViz config file'
     ))
 
