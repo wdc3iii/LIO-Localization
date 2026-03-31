@@ -18,10 +18,9 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='imu_to_body_broadcaster',
             arguments=[
-                '--x', '0.5', '--y', '0', '--z', '-0.866',
-                '--qx', '0', '--qy', '-0.25882', '--qz', '0', '--qw', '0.96593',
-                '--frame-id', 'imu',
-                '--child-frame-id', 'body',
+                '0.5', '0', '-0.866',
+                '0', '-0.25882', '0', '0.96593',
+                'imu', 'body',
             ],
         ),
     ])
@@ -31,10 +30,9 @@ def generate_launch_description():
     #         executable='static_transform_publisher',
     #         name='imu_to_body_broadcaster',
     #         arguments=[
-    #             '--x', '0.5', '--y', '0', '--z', '-0.866',
-    #             '--qx', '-0.18301', '--qy', '-0.18301', '--qz', '0.68301', '--qw', '0.68301',
-    #             '--frame-id', 'imu',
-    #             '--child-frame-id', 'body',
+    #             '0.5', '0', '-0.866',
+    #             '-0.18301', '-0.18301', '0.68301', '0.68301',
+    #             'imu', 'body',
     #         ],
     #     ),
     # ])
