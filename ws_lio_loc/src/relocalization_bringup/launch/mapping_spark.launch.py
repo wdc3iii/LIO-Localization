@@ -3,11 +3,37 @@ import os.path
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.conditions import IfCondition
 
 from launch_ros.actions import Node
+
+
+ROBOT_BODY_FRAME_LAUNCH = {
+    'default': 'body_frame_default.launch.py',
+    'g1': 'body_frame_g1.launch.py',
+    'go2': 'body_frame_go2.launch.py',
+    'stick': 'body_frame_stick.launch.py',
+}
+
+
+def _include_body_frame(context):
+    robot_name = context.launch_configurations.get('robot_name', '')
+    if not robot_name:
+        return []
+
+    launch_file = ROBOT_BODY_FRAME_LAUNCH.get(robot_name)
+    if launch_file is None:
+        raise RuntimeError(
+            f"Unknown robot_name '{robot_name}'. "
+            f"Valid options: {list(ROBOT_BODY_FRAME_LAUNCH.keys())}")
+
+    bringup_path = get_package_share_directory('relocalization_bringup')
+    return [IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(bringup_path, 'launch', launch_file)))]
 
 
 def generate_launch_description():
@@ -44,6 +70,12 @@ def generate_launch_description():
         'rviz_cfg', default_value=default_rviz_config_path,
         description='RViz config file path'
     )
+    declare_robot_name_cmd = DeclareLaunchArgument(
+        'robot_name', default_value='',
+        description='Robot name for body frame selection '
+                    '(default, g1, go2, stick). '
+                    'If empty, no body frame transform is published.'
+    )
     spark_lio_node = Node(
         package='spark_fast_lio',
         executable='spark_lio_mapping',
@@ -69,8 +101,10 @@ def generate_launch_description():
     ld.add_action(declare_config_file_cmd)
     ld.add_action(declare_rviz_cmd)
     ld.add_action(declare_rviz_config_path_cmd)
+    ld.add_action(declare_robot_name_cmd)
 
     ld.add_action(spark_lio_node)
     ld.add_action(rviz_node)
+    ld.add_action(OpaqueFunction(function=_include_body_frame))
 
     return ld
