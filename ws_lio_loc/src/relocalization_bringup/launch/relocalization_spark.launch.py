@@ -16,7 +16,9 @@ ROBOT_BODY_FRAME_LAUNCH = {
 
 
 def _include_body_frame(context):
-    robot_name = context.launch_configurations['robot_name']
+    robot_name = context.launch_configurations.get('robot_name', '')
+    if not robot_name:
+        return []
     bringup_path = get_package_share_directory('relocalization_bringup')
 
     launch_file = ROBOT_BODY_FRAME_LAUNCH.get(robot_name)
