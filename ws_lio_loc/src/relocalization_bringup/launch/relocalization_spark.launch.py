@@ -23,9 +23,7 @@ def _include_body_frame(context):
 
     launch_file = ROBOT_BODY_FRAME_LAUNCH.get(robot_name)
     if launch_file is None:
-        raise RuntimeError(
-            f"Unknown robot_name '{robot_name}'. "
-            f"Valid options: {list(ROBOT_BODY_FRAME_LAUNCH.keys())}")
+        return []
 
     return [IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -38,7 +36,6 @@ def generate_launch_description():
 
     # Shared arguments
     use_sim_time = LaunchConfiguration('use_sim_time')
-    robot_name = LaunchConfiguration('robot_name')
 
     # spark_fast_lio arguments
     lio_config_path = LaunchConfiguration('lio_config_path')
@@ -77,8 +74,8 @@ def generate_launch_description():
         description='RViz config file path'
     ))
     ld.add_action(DeclareLaunchArgument(
-        'robot_name', default_value='default',
-        description='Robot name for body frame selection (default, g1, go2)'
+        'robot_name', default_value='none',
+        description='Robot name for body frame selection (default, g1, go2, stick). If unset, no body frame TF is launched.'
     ))
     ld.add_action(DeclareLaunchArgument(
         'scan_lock_config_path',
