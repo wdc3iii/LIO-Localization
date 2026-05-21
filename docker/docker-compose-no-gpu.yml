@@ -9,6 +9,8 @@ services:
         UID: $UID
         GID: $UID
         LIO_ROOT: $LIO_ROOT
+        WITH_GLIM: ${WITH_GLIM:-false}
+        # WITH_GLIM_CUDA intentionally not exposed: no-GPU image cannot use CUDA.
     network_mode: host
     ipc: host
     environment:

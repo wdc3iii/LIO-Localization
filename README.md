@@ -132,6 +132,57 @@ sudo apt install pcl-tools  # one-time install
 pcl_viewer src/relocalization_bringup/pcd/<name>/map.pcd
 ```
 
+### GLIM Mapping (optional, desktop only)
+
+[GLIM](https://koide3.github.io/glim/) is a third LIO/SLAM backend useful for producing larger / longer maps than FAST-LIO2 reliably handles. It is **not installed by default** — pass `WITH_GLIM=true` at Docker build time (see Docker section). The GLIM tools (helper scripts, Mid360 config, and PLY→PCD converter) ship as part of `relocalization_bringup` regardless, so the converter is usable even on a non-GLIM machine.
+
+The Mid360 workflow lives in [ws_lio_loc/src/relocalization_bringup/glim_tools/](ws_lio_loc/src/relocalization_bringup/glim_tools/):
+
+```
+glim_tools/
+├── livox_custom_to_pc2.py   # relay: /livox/lidar (CustomMsg) -> /livox/points (PointCloud2)
+├── run_glim_bag.py          # whole-bag mapping (no chunking)
+├── run_glim_chunked.py      # auto-chunked mapping for long bags
+```
+
+with a Mid360-specific GLIM config dir at [ws_lio_loc/src/relocalization_bringup/config/glim_mid360/](ws_lio_loc/src/relocalization_bringup/config/glim_mid360/). Customizations from stock GLIM:
+- `config_ros.json` — points/IMU topics set to `/livox/points` and `/livox/imu`
+- `config_sensors.json` — `T_lidar_imu = [-0.011, -0.02329, 0.04412, 0, 0, 0, 1]`
+- `config.json` — global mapping defaults to the CPU variant (safer for long bags; flip the comment to switch to GPU)
+
+**Whole-bag run:**
+
+```bash
+ros2 run relocalization_bringup run_glim_bag.py \
+    --bag /path/to/bag \
+    --output-dir /path/to/dump
+```
+
+**Chunked run** (for bags too long to fit in VRAM at GPU settings):
+
+```bash
+ros2 run relocalization_bringup run_glim_chunked.py \
+    --bag /path/to/bag \
+    --output-dir /path/to/chunks \
+    --chunk-duration 900 --overlap 60
+```
+
+Both scripts spawn the relay, the GLIM node, and `ros2 bag play` themselves. They expect the calling shell to have sourced `/opt/ros/humble/setup.bash`, the Livox driver workspace, and (for runtime) `~/glim_ws/install/setup.bash`. Inside the Docker container with `WITH_GLIM=true`, that last source is added to `~/.bashrc` automatically.
+
+On `Ctrl-C`, both scripts pass SIGINT to GLIM so it can write its dump (`graph.bin` + per-submap PCDs). Never `kill -9` — only graceful shutdown triggers the save.
+
+**PLY → PCD conversion:**
+
+GLIM's offline_viewer exports points as PLY only; `scan_lock_node` reads PCD. Use the bundled converter:
+
+```bash
+ros2 run relocalization_bringup ply_to_pcd input.ply output.pcd        # default 0.05 m voxel
+ros2 run relocalization_bringup ply_to_pcd input.ply output.pcd --voxel 0.1
+ros2 run relocalization_bringup ply_to_pcd input.ply output.pcd --no-voxel
+```
+
+The default voxel size matches `consolidate_map.yaml` (0.05 m). The converter reports point-count and file-size compression so you can pick a leaf size with intent.
+
 ## Packages
 
 | Package | Description |
@@ -161,6 +212,8 @@ LIO_ROOT=/absolute/path/to/LIO-Localization
 ```
 
 The default `.env` also sets `USER`, `UID`, and `GID` — adjust these if your host user doesn't match the defaults.
+
+**Optional: GLIM mapping backend.** Set `WITH_GLIM=true` (and optionally `WITH_GLIM_CUDA=true` for the GPU compose file) in `docker/.env` to build the image with GLIM, `gtsam_points`, and the koide3 PPAs preinstalled. Skipped by default so onboard images stay slim. See the [GLIM Mapping](#glim-mapping-optional-desktop-only) section above for usage.
 
 ### Option 1: VS Code Dev Container (Recommended)
 

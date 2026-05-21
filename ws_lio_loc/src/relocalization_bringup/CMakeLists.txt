@@ -58,8 +58,31 @@ ament_target_dependencies(waypoint_dropper
 target_compile_features(waypoint_dropper PRIVATE cxx_std_17)
 target_compile_definitions(waypoint_dropper PRIVATE ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
 
+# Add ply_to_pcd executable (PLY -> PCD converter for GLIM exports)
+add_executable(ply_to_pcd
+  relocalization_bringup/ply_to_pcd.cpp
+)
+
+target_link_libraries(ply_to_pcd
+  ${PCL_LIBRARIES}
+)
+
+target_include_directories(ply_to_pcd PRIVATE
+  ${PCL_INCLUDE_DIRS}
+)
+
+target_compile_features(ply_to_pcd PRIVATE cxx_std_17)
+
 # Install executables
-install(TARGETS consolidate_map waypoint_dropper
+install(TARGETS consolidate_map waypoint_dropper ply_to_pcd
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install GLIM helper Python scripts as ros2-runnable executables
+install(PROGRAMS
+  glim_tools/livox_custom_to_pc2.py
+  glim_tools/run_glim_bag.py
+  glim_tools/run_glim_chunked.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

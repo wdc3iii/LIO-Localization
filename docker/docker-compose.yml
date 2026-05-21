@@ -9,6 +9,8 @@ services:
         UID: $UID
         GID: $UID
         LIO_ROOT: $LIO_ROOT
+        WITH_GLIM: ${WITH_GLIM:-false}
+        WITH_GLIM_CUDA: ${WITH_GLIM_CUDA:-false}
     network_mode: host
     ipc: host
     environment:
