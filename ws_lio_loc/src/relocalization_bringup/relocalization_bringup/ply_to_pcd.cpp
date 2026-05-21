@@ -2,6 +2,11 @@
 // binary PCD format that scan_lock loads. Optionally voxel-downsamples the
 // output (default voxel 0.05 m, matching consolidate_map.yaml). Reports the
 // point-count and file-size compression achieved.
+//
+// Output is PointXYZI (16 B/pt) by default — scan_lock template-loads as
+// PointXYZINormal and PCL zero-fills the absent normal/curvature fields, so
+// the smaller layout is functionally identical at half the disk cost. Use
+// --xyzin to match consolidate_map's PointXYZINormal layout if needed.
 
 #include <chrono>
 #include <cmath>
@@ -13,6 +18,7 @@
 #include <string>
 
 #include <pcl/common/common.h>
+#include <pcl/common/io.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
@@ -75,18 +81,21 @@ PointCloud::Ptr voxelDownsample(const PointCloud::Ptr& cloud, float voxel_size) 
   int nx = std::max(1, static_cast<int>(std::ceil(ex / safe_extent)));
   int ny = std::max(1, static_cast<int>(std::ceil(ey / safe_extent)));
   int nz = std::max(1, static_cast<int>(std::ceil(ez / safe_extent)));
+  int total_chunks = nx * ny * nz;
   std::cout << "[INFO] cloud extent " << ex << " x " << ey << " x " << ez
             << " m too large for leaf " << voxel_size << "m; chunking "
-            << nx << "x" << ny << "x" << nz << "\n";
+            << nx << "x" << ny << "x" << nz << " = " << total_chunks << " chunks\n";
 
   float dx = ex / nx;
   float dy = ey / ny;
   float dz = ez / nz;
   PointCloud::Ptr result(new PointCloud);
+  int chunk_idx = 0;
 
   for (int ix = 0; ix < nx; ++ix) {
     for (int iy = 0; iy < ny; ++iy) {
       for (int iz = 0; iz < nz; ++iz) {
+        ++chunk_idx;
         float x_min = min_pt.x + ix * dx;
         float y_min = min_pt.y + iy * dy;
         float z_min = min_pt.z + iz * dz;
@@ -100,7 +109,11 @@ PointCloud::Ptr voxelDownsample(const PointCloud::Ptr& cloud, float voxel_size) 
         crop.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0f));
         PointCloud::Ptr chunk(new PointCloud);
         crop.filter(*chunk);
-        if (chunk->empty()) continue;
+        if (chunk->empty()) {
+          std::cout << "[INFO]   chunk [" << chunk_idx << "/" << total_chunks
+                    << "] empty, skipping\n";
+          continue;
+        }
 
         pcl::VoxelGrid<PointType> vg;
         vg.setInputCloud(chunk);
@@ -108,6 +121,10 @@ PointCloud::Ptr voxelDownsample(const PointCloud::Ptr& cloud, float voxel_size) 
         PointCloud::Ptr chunk_filtered(new PointCloud);
         vg.filter(*chunk_filtered);
         *result += *chunk_filtered;
+
+        std::cout << "[INFO]   chunk [" << chunk_idx << "/" << total_chunks
+                  << "] " << chunk->size() << " -> " << chunk_filtered->size()
+                  << " points (accumulated: " << result->size() << ")\n";
       }
     }
   }
@@ -125,6 +142,12 @@ void printUsage(const char* prog) {
             << "                    Default: 0.05. Set to 0 to disable.\n"
             << "  --no-voxel        Equivalent to --voxel 0.\n"
             << "  --ascii           Write ASCII PCD instead of binary.\n"
+            << "  --xyzin           Save as PointXYZINormal (32 B/pt) matching\n"
+            << "                    consolidate_map's layout. Default is\n"
+            << "                    PointXYZI (16 B/pt), which scan_lock loads\n"
+            << "                    by zero-padding the missing normal/curvature\n"
+            << "                    fields — half the file size, identical\n"
+            << "                    runtime behavior.\n"
             << "  --copy-to PATH    After writing OUTPUT.pcd, also copy it to PATH.\n"
             << "                    If PATH is an existing directory, the file is\n"
             << "                    copied in with its original basename; otherwise\n"
@@ -142,6 +165,7 @@ int main(int argc, char** argv) {
   std::string copy_to;
   float voxel = 0.05f;
   bool binary = true;
+  bool xyzi_output = true;
 
   std::vector<std::string> positional;
   for (int i = 1; i < argc; ++i) {
@@ -156,6 +180,8 @@ int main(int argc, char** argv) {
       voxel = 0.0f;
     } else if (a == "--ascii") {
       binary = false;
+    } else if (a == "--xyzin") {
+      xyzi_output = false;
     } else if (a == "--copy-to" && i + 1 < argc) {
       copy_to = argv[++i];
     } else if (!a.empty() && a[0] == '-') {
@@ -216,10 +242,14 @@ int main(int argc, char** argv) {
   }
 
   int rc;
-  if (binary) {
-    rc = pcl::io::savePCDFileBinary(out_path, *out);
+  if (xyzi_output) {
+    pcl::PointCloud<pcl::PointXYZI> out_xyzi;
+    pcl::copyPointCloud(*out, out_xyzi);
+    rc = binary ? pcl::io::savePCDFileBinary(out_path, out_xyzi)
+                : pcl::io::savePCDFileASCII(out_path, out_xyzi);
   } else {
-    rc = pcl::io::savePCDFileASCII(out_path, *out);
+    rc = binary ? pcl::io::savePCDFileBinary(out_path, *out)
+                : pcl::io::savePCDFileASCII(out_path, *out);
   }
   if (rc == -1) {
     std::cerr << "[ERROR] failed to save PCD: " << out_path << "\n";
@@ -246,7 +276,9 @@ int main(int argc, char** argv) {
               << (in_bytes > 0 ? 100.0 * (1.0 - static_cast<double>(out_bytes) / in_bytes) : 0.0)
               << "% reduction)\n";
   }
-  std::cout << "  wrote " << out_path << " (" << (binary ? "binary" : "ascii") << ")\n";
+  std::cout << "  wrote " << out_path << " ("
+            << (binary ? "binary" : "ascii") << ", "
+            << (xyzi_output ? "PointXYZI" : "PointXYZINormal") << ")\n";
 
   if (!copy_to.empty()) {
     fs::path dest = copy_to;
@@ -255,6 +287,30 @@ int main(int argc, char** argv) {
     } else if (dest.has_parent_path()) {
       fs::create_directories(dest.parent_path());
     }
+
+    // If the destination resolves to the same file we just wrote, the copy is
+    // a no-op (and std::filesystem::copy_file would error even with
+    // overwrite_existing).
+    std::error_code ec;
+    if (fs::exists(dest) && fs::equivalent(out_path, dest, ec)) {
+      std::cout << "  output already at " << dest << "; nothing to copy\n";
+      return 0;
+    }
+
+    if (fs::exists(dest)) {
+      std::cout << "  destination already exists: " << dest << "\n"
+                << "  overwrite? [y/N] " << std::flush;
+      std::string response;
+      if (!std::getline(std::cin, response)) {
+        std::cerr << "[ERROR] no input available; skipping copy\n";
+        return 1;
+      }
+      if (response.empty() || (response[0] != 'y' && response[0] != 'Y')) {
+        std::cout << "  skipped copy\n";
+        return 0;
+      }
+    }
+
     try {
       fs::copy_file(out_path, dest, fs::copy_options::overwrite_existing);
       std::cout << "  copied to " << dest << "\n";

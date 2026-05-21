@@ -8,6 +8,7 @@ Bringup package for mapping and relocalization with two LIO backends: `fast_lio`
 relocalization_bringup/
 ├── bags/          # Bag files for replay
 ├── pcd/           # Consolidated maps from consolidate_map
+├── glim_maps/     # GLIM session dumps and exported maps
 ├── config/        # Sensor and scan_lock configuration files
 └── launch/        # Launch files
 ```
@@ -177,13 +178,13 @@ The helper scripts handle the CustomMsg → PointCloud2 relay automatically when
 # or anything length on CPU global mapping.
 ros2 run relocalization_bringup run_glim_bag.py \
     --bag /path/to/bag \
-    --output-dir ~/glim_maps/my_run
+    --output-dir src/relocalization_bringup/glim_maps/my_run
 
 # Chunked (long bags). Splits into ~15 min chunks with 60 s overlap; each
 # chunk gets its own dump so VRAM stays bounded.
 ros2 run relocalization_bringup run_glim_chunked.py \
     --bag /path/to/bag \
-    --output-dir ~/glim_maps/my_run_chunks \
+    --output-dir src/relocalization_bringup/glim_maps/my_run_chunks \
     --chunk-duration 900 --overlap 60
 ```
 
@@ -194,10 +195,10 @@ On `Ctrl-C` (or natural end of bag), the script SIGINTs GLIM so it can write its
 **3. Export a single PLY from GLIM's offline_viewer.** GLIM dumps a session, not a finished map. Open the session and export:
 
 ```bash
-ros2 run glim_ros offline_viewer --ros-args -p init_dump_path:=~/glim_maps/my_run
+ros2 run glim_ros offline_viewer --ros-args -p init_dump_path:=src/relocalization_bringup/glim_maps/my_run
 ```
 
-In the viewer GUI: `File → Export → Points` and save as e.g. `~/glim_maps/my_run/map.ply`. The viewer writes PLY regardless of extension, so a `.pcd` extension here will silently be PLY-format and fail downstream — name it `.ply`.
+In the viewer GUI: `File → Export → Points` and save as e.g. `src/relocalization_bringup/glim_maps/my_run/map.ply`. The viewer writes PLY regardless of extension, so a `.pcd` extension here will silently be PLY-format and fail downstream — name it `.ply`.
 
 For chunked runs, either merge sessions inside `offline_viewer` first (`File → Merge`) and then export, or export each chunk separately and align them outside GLIM (see GLIM's [docs/merge.md](https://github.com/koide3/glim/blob/master/docs/merge.md)).
 
@@ -205,13 +206,13 @@ For chunked runs, either merge sessions inside `offline_viewer` first (`File →
 
 ```bash
 ros2 run relocalization_bringup ply_to_pcd \
-    ~/glim_maps/my_run/map.ply \
-    ~/glim_maps/my_run/map.pcd \
+    src/relocalization_bringup/glim_maps/my_run/map.ply \
+    src/relocalization_bringup/glim_maps/my_run/map.pcd \
     --voxel 0.05 \
     --copy-to src/scan_lock/pcd/
 ```
 
-That writes a binary PCD (PointXYZINormal, the type `scan_lock_node` loads), voxel-downsamples at 0.05 m (matching `consolidate_map.yaml`'s default), reports point-count and file-size compression, and copies the result into `src/scan_lock/pcd/map.pcd`. From there, `relocalization.launch.py` (or `relocalization_spark.launch.py`) can lock onto it.
+That writes a binary PCD as `PointXYZI` (16 B/pt — half the size of `PointXYZINormal`; `scan_lock_node` loads it just the same, zero-padding the absent normal/curvature fields it never reads anyway), voxel-downsamples at 0.05 m (matching `consolidate_map.yaml`'s default), reports point-count and file-size compression, and copies the result into `src/scan_lock/pcd/map.pcd`. From there, `relocalization.launch.py` (or `relocalization_spark.launch.py`) can lock onto it. Pass `--xyzin` if you specifically need `PointXYZINormal` output to match `consolidate_map`'s layout.
 
 `--copy-to` mirrors `consolidate_map.yaml`'s `copy_dir` field: if the argument is an existing directory, the PCD is copied into it with its original basename; otherwise the argument is treated as the target file path. Drop the flag entirely if you don't want the copy.
 
@@ -236,18 +237,18 @@ GLIM has two viewer extension modules: `libstandard_viewer.so` (native Iridescen
 ```bash
 # Default: opens the Iridescence window + publishes RViz topics
 ros2 run relocalization_bringup run_glim_bag.py \
-    --bag /path/to/bag --output-dir ~/glim_maps/run
+    --bag /path/to/bag --output-dir src/relocalization_bringup/glim_maps/run
 
 # RViz-only: useful inside the docker container or over SSH where the
 # native viewer is awkward but you still want to see what's happening.
 # Launch your own RViz against /glim/* topics in another terminal.
 ros2 run relocalization_bringup run_glim_bag.py \
-    --bag /path/to/bag --output-dir ~/glim_maps/run --rviz-only
+    --bag /path/to/bag --output-dir src/relocalization_bringup/glim_maps/run --rviz-only
 
 # Headless: no viewer state, only the dump on disk. Cheapest CPU-wise,
 # safe over SSH with no display, fine for CI / batch reprocessing.
 ros2 run relocalization_bringup run_glim_bag.py \
-    --bag /path/to/bag --output-dir ~/glim_maps/run --headless
+    --bag /path/to/bag --output-dir src/relocalization_bringup/glim_maps/run --headless
 ```
 
 Same three flags apply to `run_glim_chunked.py`. The flags are a no-op if you also pass `--config /some/explicit/path` — that path wins, since you've taken responsibility for picking a config dir.
