@@ -43,7 +43,13 @@ try:
 except Exception:
     _SHARE = None
 
-DEFAULT_CONFIG = (_SHARE / "config" / "glim_mid360") if _SHARE else None
+CONFIG_VARIANTS = {
+    "default": "glim_mid360",
+    "rviz_only": "glim_mid360_rviz",
+    "headless": "glim_mid360_headless",
+}
+
+DEFAULT_CONFIG = (_SHARE / "config" / CONFIG_VARIANTS["default"]) if _SHARE else None
 DEFAULT_RELAY = Path(__file__).resolve().parent / "livox_custom_to_pc2.py"
 
 
@@ -175,7 +181,19 @@ def main():
                     help="skip chunks with index < N (resume support)")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the chunk plan and exit")
+    viewer = ap.add_mutually_exclusive_group()
+    viewer.add_argument("--headless", action="store_true",
+                        help="Use the headless config variant. Implied by --config.")
+    viewer.add_argument("--rviz-only", action="store_true",
+                        help="Use the rviz-only config variant. Implied by --config.")
     args = ap.parse_args()
+
+    if args.config == DEFAULT_CONFIG and _SHARE is not None:
+        if args.headless:
+            args.config = _SHARE / "config" / CONFIG_VARIANTS["headless"]
+        elif args.rviz_only:
+            args.config = _SHARE / "config" / CONFIG_VARIANTS["rviz_only"]
+    log(f"using config: {args.config}")
 
     if args.config is None or not (args.config / "config.json").exists():
         sys.exit(f"glim config dir missing config.json: {args.config}")

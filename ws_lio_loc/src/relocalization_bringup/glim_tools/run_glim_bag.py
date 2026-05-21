@@ -37,7 +37,16 @@ try:
 except Exception:
     _SHARE = None
 
-DEFAULT_CONFIG = (_SHARE / "config" / "glim_mid360") if _SHARE else None
+# Viewer variants are sibling config dirs. --headless / --rviz-only just
+# pick a different one; the only difference is the extension_modules list
+# in config_ros.json.
+CONFIG_VARIANTS = {
+    "default": "glim_mid360",        # iridescence GUI + RViz topics
+    "rviz_only": "glim_mid360_rviz", # RViz topics only
+    "headless": "glim_mid360_headless",
+}
+
+DEFAULT_CONFIG = (_SHARE / "config" / CONFIG_VARIANTS["default"]) if _SHARE else None
 DEFAULT_RELAY = Path(__file__).resolve().parent / "livox_custom_to_pc2.py"
 
 
@@ -91,7 +100,21 @@ def main():
                     help="max seconds to wait for glim to write its dump")
     ap.add_argument("--rate", type=float, default=1.0,
                     help="ros2 bag play rate (default 1.0)")
+    viewer = ap.add_mutually_exclusive_group()
+    viewer.add_argument("--headless", action="store_true",
+                        help="Use the headless config variant (no Iridescence GUI, "
+                             "no RViz publisher). Implied by --config.")
+    viewer.add_argument("--rviz-only", action="store_true",
+                        help="Use the rviz-only config variant (no Iridescence GUI, "
+                             "keeps RViz publisher). Implied by --config.")
     args = ap.parse_args()
+
+    # Resolve viewer variant unless the caller explicitly passed --config.
+    if args.config == DEFAULT_CONFIG and _SHARE is not None:
+        if args.headless:
+            args.config = _SHARE / "config" / CONFIG_VARIANTS["headless"]
+        elif args.rviz_only:
+            args.config = _SHARE / "config" / CONFIG_VARIANTS["rviz_only"]
 
     if args.config is None or not (args.config / "config.json").exists():
         sys.exit(f"glim config dir missing config.json: {args.config}")
@@ -101,6 +124,7 @@ def main():
         sys.exit(f"relay script not found: {args.relay}")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    log(f"using config: {args.config}")
 
     relay = None
     glim = None

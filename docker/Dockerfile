@@ -115,6 +115,7 @@ RUN if [ "${WITH_GLIM}" = "true" ] || [ "${WITH_GLIM_CUDA}" = "true" ]; then \
         sudo apt-get update && \
         sudo apt-get install -y --no-install-recommends \
             software-properties-common wget gnupg ca-certificates \
+            gcc-12 g++-12 \
             libfmt-dev libspdlog-dev libopencv-dev \
             libmetis-dev libomp-dev \
             libpng-dev libjpeg-dev libglm-dev libglfw3-dev \
@@ -136,6 +137,7 @@ RUN if [ "${WITH_GLIM}" = "true" ] || [ "${WITH_GLIM_CUDA}" = "true" ]; then \
         fi && \
         sudo rm -rf /var/lib/apt/lists/* && \
         echo "Building gtsam_points (CUDA=${WITH_GLIM_CUDA}, arch=${CUDA_ARCH})..." && \
+        export CC=gcc-12 && export CXX=g++-12 && \
         if [ "${WITH_GLIM_CUDA}" = "true" ]; then \
             export PATH=/usr/local/cuda-12.6/bin:$PATH ; \
             export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH ; \
@@ -145,9 +147,10 @@ RUN if [ "${WITH_GLIM}" = "true" ] || [ "${WITH_GLIM_CUDA}" = "true" ]; then \
         git clone https://github.com/koide3/gtsam_points && \
         cd gtsam_points && mkdir build && cd build && \
         cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 \
             -DBUILD_WITH_CUDA=${WITH_GLIM_CUDA} \
             -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH} && \
-        make -j$(nproc) && sudo make install && sudo ldconfig && \
+        make -j$(($(nproc) < 8 ? $(nproc) : 8)) && sudo make install && sudo ldconfig && \
         echo "Building glim_ws..." && \
         mkdir -p /home/${USER}/glim_ws/src && \
         cd /home/${USER}/glim_ws/src && \
@@ -155,8 +158,9 @@ RUN if [ "${WITH_GLIM}" = "true" ] || [ "${WITH_GLIM_CUDA}" = "true" ]; then \
         git clone https://github.com/koide3/glim_ros2.git && \
         cd /home/${USER}/glim_ws && \
         source /opt/ros/humble/setup.bash && \
-        colcon build --symlink-install --cmake-args \
+        MAKEFLAGS="-j$(($(nproc) < 8 ? $(nproc) : 8))" colcon build --symlink-install --cmake-args \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 \
             -DBUILD_WITH_CUDA=${WITH_GLIM_CUDA} \
             -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH} \
             -DBUILD_WITH_VIEWER=ON ; \

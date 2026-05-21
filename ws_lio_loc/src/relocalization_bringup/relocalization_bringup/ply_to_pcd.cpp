@@ -125,6 +125,12 @@ void printUsage(const char* prog) {
             << "                    Default: 0.05. Set to 0 to disable.\n"
             << "  --no-voxel        Equivalent to --voxel 0.\n"
             << "  --ascii           Write ASCII PCD instead of binary.\n"
+            << "  --copy-to PATH    After writing OUTPUT.pcd, also copy it to PATH.\n"
+            << "                    If PATH is an existing directory, the file is\n"
+            << "                    copied in with its original basename; otherwise\n"
+            << "                    PATH is treated as the target file path. Mirrors\n"
+            << "                    consolidate_map.yaml's `copy_dir` behavior so the\n"
+            << "                    map ends up in scan_lock/pcd/ in one step.\n"
             << "  -h, --help        Show this help.\n";
 }
 
@@ -133,6 +139,7 @@ void printUsage(const char* prog) {
 int main(int argc, char** argv) {
   std::string in_path;
   std::string out_path;
+  std::string copy_to;
   float voxel = 0.05f;
   bool binary = true;
 
@@ -149,6 +156,8 @@ int main(int argc, char** argv) {
       voxel = 0.0f;
     } else if (a == "--ascii") {
       binary = false;
+    } else if (a == "--copy-to" && i + 1 < argc) {
+      copy_to = argv[++i];
     } else if (!a.empty() && a[0] == '-') {
       std::cerr << "Unknown option: " << a << "\n";
       printUsage(argv[0]);
@@ -238,5 +247,21 @@ int main(int argc, char** argv) {
               << "% reduction)\n";
   }
   std::cout << "  wrote " << out_path << " (" << (binary ? "binary" : "ascii") << ")\n";
+
+  if (!copy_to.empty()) {
+    fs::path dest = copy_to;
+    if (fs::exists(dest) && fs::is_directory(dest)) {
+      dest /= fs::path(out_path).filename();
+    } else if (dest.has_parent_path()) {
+      fs::create_directories(dest.parent_path());
+    }
+    try {
+      fs::copy_file(out_path, dest, fs::copy_options::overwrite_existing);
+      std::cout << "  copied to " << dest << "\n";
+    } catch (const std::exception& e) {
+      std::cerr << "[ERROR] failed to copy to " << dest << ": " << e.what() << "\n";
+      return 1;
+    }
+  }
   return 0;
 }
