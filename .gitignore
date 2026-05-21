@@ -42,6 +42,7 @@
 
 # Pointcloud files
 *.pcd
+*.ply
 **/pcd/**
 !**/pcd/**/.gitkeep
 **/bags/**
