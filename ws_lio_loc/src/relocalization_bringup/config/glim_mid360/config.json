@@ -9,9 +9,9 @@
     "config_preprocess": "config_preprocess.json",
     "config_odometry": "config_odometry_gpu.json",
     "config_sub_mapping": "config_sub_mapping_gpu.json",
-    // Global mapping on CPU (avoids OOM in offline_viewer merge with many sessions).
-    // To switch back to GPU for live mapping, swap the two lines below.
-    "config_global_mapping": "config_global_mapping_cpu.json"
-    // "config_global_mapping": "config_global_mapping_gpu.json"
+    // Global mapping on GPU. CPU variant is the fallback if offline_viewer OOMs
+    // merging many sessions — swap the two lines below to switch back.
+    // "config_global_mapping": "config_global_mapping_cpu.json"
+    "config_global_mapping": "config_global_mapping_gpu.json"
   }
 }
