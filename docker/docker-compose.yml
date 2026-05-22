@@ -36,7 +36,6 @@ services:
       - 7007:7007
       - 10000:10000
     privileged: true
-    runtime: nvidia
     deploy:
       resources:
         reservations:
