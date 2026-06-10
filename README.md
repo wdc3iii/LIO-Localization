@@ -39,98 +39,7 @@ source install/setup.bash
 
 ## Usage
 
-### Recording Offline
-
-To record LiDAR data offline, source the `livox_ros_driver2`, launch the LiDAR unit, and record a rosbag:
-
-```bash
-source /path/to/livox_ros_driver2/install/setup.bash
-ros2 launch livox_ros_driver2 mid360.launch.py
-```
-
-```bash
-# Run from the repository root (LIO-Localization/)
-source /path/to/livox_ros_driver2/install/setup.bash
-ros2 bag record /livox/lidar /livox/imu -o ws_lio_loc/src/relocalization_bringup/bags
-```
-
-### Mapping
-
-Two LIO backends are available for mapping. Both produce gravity-aligned, heading-zeroed odometry and save PCD scans for map consolidation.
-
-**FAST-LIO2 backend:**
-
-```bash
-ros2 launch relocalization_bringup mapping.launch.py
-```
-
-**SPARK Fast-LIO2 backend:**
-
-```bash
-ros2 launch relocalization_bringup mapping_spark.launch.py
-```
-
-Launch arguments (both mapping launches):
-
-| Argument | Default | Description |
-|---|---|---|
-| `use_sim_time` | `false` | Set `true` for bag replay |
-| `config_path` | `<bringup>/config` | Path to config directory |
-| `config_file` | `mid360.yaml` / `mid360_spark.yaml` | Sensor config file |
-| `rviz` | `true` | Launch RViz visualization |
-| `rviz_cfg` | `fastlio.rviz` | RViz config file path |
-
-### Relocalization
-
-Relocalization combines a LIO backend with `scan_lock` to localize within a prior pointcloud map. It also broadcasts a body frame TF based on the robot platform.
-
-**FAST-LIO2 backend:**
-
-```bash
-ros2 launch relocalization_bringup relocalization.launch.py robot_name:=go2
-```
-
-**SPARK Fast-LIO2 backend:**
-
-```bash
-ros2 launch relocalization_bringup relocalization_spark.launch.py robot_name:=go2
-```
-
-Launch arguments (both relocalization launches):
-
-| Argument | Default | Description |
-|---|---|---|
-| `use_sim_time` | `false` | Set `true` for bag replay |
-| `robot_name` | `default` | Robot platform (`default`, `g1`, `go2`, `stick`) |
-| `lio_config_path` | `<bringup>/config` | LIO config directory |
-| `lio_config_file` | `mid360_relocalization.yaml` / `mid360_relocalization_spark.yaml` | LIO config file |
-| `scan_lock_config_path` | `<bringup>/config` | scan_lock config directory |
-| `scan_lock_config_file` | `scan_lock.yaml` / `scan_lock_spark.yaml` | scan_lock config file |
-| `rviz` | `true` | Launch RViz visualization |
-| `rviz_cfg` | `scanlock.rviz` | RViz config file path |
-
-In RViz, use the **2D Pose Estimate** tool to provide an initial pose guess on the `/initialpose` topic. `scan_lock` will refine the estimate via ICP registration.
-
-### Pointcloud Consolidation
-
-After mapping, consolidate the individual PCD scans into a single map:
-
-```bash
-# Run from ws_lio_loc/
-ros2 run relocalization_bringup consolidate_map --lio fast_lio
-ros2 run relocalization_bringup consolidate_map --lio spark
-```
-
-The `--lio` argument selects which backend's PCD directory to read from (`FAST_LIO/PCD/` or `spark_fast_lio/PCD/`).
-
-Configuration is in `relocalization_bringup/config/consolidate_map.yaml` — controls voxel filter sizes, output directory, and whether to delete source files after consolidation. Output maps are written to `relocalization_bringup/pcd/` and copied to `scan_lock/pcd/`.
-
-To visualize a map:
-
-```bash
-sudo apt install pcl-tools  # one-time install
-pcl_viewer src/relocalization_bringup/pcd/<name>/map.pcd
-```
+Per-workflow docs (recording, mapping, relocalization, map consolidation, GLIM mapping, PLY→PCD conversion) live in the package README: [ws_lio_loc/src/relocalization_bringup/README.md](ws_lio_loc/src/relocalization_bringup/README.md).
 
 ## Packages
 
@@ -153,14 +62,26 @@ A Docker-based development environment is provided with two variants: **GPU** (N
 
 ### Environment Setup
 
-The compose files read variables from `docker/.env`. Before building, set `LIO_ROOT` to the absolute path of this repository:
+The compose files read variables from `docker/.env`, which is **not** tracked in git (per-machine settings differ). Bootstrap it from the tracked template:
 
 ```bash
-# Add to docker/.env
-LIO_ROOT=/absolute/path/to/LIO-Localization
+cp docker/.env_example docker/.env
 ```
 
-The default `.env` also sets `USER`, `UID`, and `GID` — adjust these if your host user doesn't match the defaults.
+Then edit `docker/.env` for your machine:
+
+| Variable | Purpose | Default in `.env_example` |
+|---|---|---|
+| `USER` | Container username (matches host so file ownership lines up) | `$(id -un)` |
+| `UID` / `GID` | Container user IDs (set to match `id -u` / `id -g` on your host) | `1001` / `1000` |
+| `LIO_ROOT` | Absolute path to this repo on the host (bind-mounted into the container) | `/home/${USER}/repos/LIO-Localization` |
+| `WITH_GLIM` | Build with GLIM (CPU global mapping; ~5-10 min added build time) | unset |
+| `WITH_GLIM_CUDA` | Build with GLIM + CUDA 12.6 GPU acceleration (implies `WITH_GLIM`; ~15-25 min added build time). GPU-compose variant only. | `true` |
+| `CUDA_ARCH` | Target compute capability for the GPU build (`89` = RTX 40-series, `86` = 30-series, `75` = 20-series, `"75;86;89"` = fat binary) | `89` (Dockerfile default) |
+
+`UID`/`GID` mismatch between the host and container is the most common new-machine pitfall — files created inside the container will be owned by the wrong UID on the host. Run `id` to check.
+
+**GLIM build notes.** `WITH_GLIM_CUDA=true` pulls in the NVIDIA CUDA 12.6 apt repo, GTSAM/Iridescence from the koide3 PPAs, builds `gtsam_points` with CUDA enabled, and clones+builds `glim` + `glim_ros2` into `~/glim_ws/install` (auto-sourced via `.bashrc`). The build uses `gcc-12` to dodge a known gcc-11 internal compiler error on deep `nanoflann` template recursion, and caps parallelism at `-j8` to avoid memory-pressure ICEs. CUDA 12.6 requires host driver ≥ 560.28.03 — check with `nvidia-smi`. See the [GLIM Mapping section in the bringup README](ws_lio_loc/src/relocalization_bringup/README.md#glim-mapping-optional-desktop-only) for usage.
 
 ### Option 1: VS Code Dev Container (Recommended)
 

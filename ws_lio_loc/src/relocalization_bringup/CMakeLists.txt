@@ -58,8 +58,48 @@ ament_target_dependencies(waypoint_dropper
 target_compile_features(waypoint_dropper PRIVATE cxx_std_17)
 target_compile_definitions(waypoint_dropper PRIVATE ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
 
+# Add ply_to_pcd executable (PLY -> PCD converter for GLIM exports)
+add_executable(ply_to_pcd
+  relocalization_bringup/ply_to_pcd.cpp
+)
+
+target_link_libraries(ply_to_pcd
+  ${PCL_LIBRARIES}
+)
+
+target_include_directories(ply_to_pcd PRIVATE
+  ${PCL_INCLUDE_DIRS}
+)
+
+target_compile_features(ply_to_pcd PRIVATE cxx_std_17)
+
+# Optional: glim_optimize_export — headless equivalent of offline_viewer's
+# Optimize + Export Points menu items. Only built when GLIM is available
+# (i.e. when the image was built with WITH_GLIM or WITH_GLIM_CUDA).
+find_package(glim QUIET)
+set(_optional_targets "")
+if(glim_FOUND)
+  add_executable(glim_optimize_export
+    relocalization_bringup/glim_optimize_export.cpp
+  )
+  target_link_libraries(glim_optimize_export glim::glim)
+  target_compile_features(glim_optimize_export PRIVATE cxx_std_17)
+  list(APPEND _optional_targets glim_optimize_export)
+  message(STATUS "glim found — building glim_optimize_export")
+else()
+  message(STATUS "glim not found — skipping glim_optimize_export")
+endif()
+
 # Install executables
-install(TARGETS consolidate_map waypoint_dropper
+install(TARGETS consolidate_map waypoint_dropper ply_to_pcd ${_optional_targets}
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install GLIM helper Python scripts as ros2-runnable executables
+install(PROGRAMS
+  glim_tools/livox_custom_to_pc2.py
+  glim_tools/run_glim_bag.py
+  glim_tools/run_glim_chunked.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

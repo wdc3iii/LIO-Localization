@@ -49,9 +49,12 @@
 !**/bags/**/.gitkeep
 **/outputs/**
 !**/outputs/**/.gitkeep
+**/glim_maps/**
+!**/glim_maps/**/.gitkeep
 .vscode
 
 # build files
 **build/
 **install/
 **log/
+docker/.env

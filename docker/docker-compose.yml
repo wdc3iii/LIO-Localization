@@ -4,11 +4,14 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      network: host
       args:
         USER: $USER
         UID: $UID
         GID: $UID
         LIO_ROOT: $LIO_ROOT
+        WITH_GLIM: ${WITH_GLIM:-false}
+        WITH_GLIM_CUDA: ${WITH_GLIM_CUDA:-false}
     network_mode: host
     ipc: host
     environment:
@@ -33,13 +36,12 @@ services:
       - 7007:7007
       - 10000:10000
     privileged: true
-    runtime: nvidia
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [ gpu ]
     working_dir: $LIO_ROOT
     stdin_open: true
