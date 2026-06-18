@@ -47,6 +47,7 @@ CONFIG_VARIANTS = {
     "default": "glim_mid360",
     "rviz_only": "glim_mid360_rviz",
     "headless": "glim_mid360_headless",
+    "indoor": "glim_mid360_indoor",
 }
 
 DEFAULT_CONFIG = (_SHARE / "config" / CONFIG_VARIANTS["default"]) if _SHARE else None
@@ -181,11 +182,17 @@ def main():
                     help="skip chunks with index < N (resume support)")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the chunk plan and exit")
-    viewer = ap.add_mutually_exclusive_group()
-    viewer.add_argument("--headless", action="store_true",
-                        help="Use the headless config variant. Implied by --config.")
-    viewer.add_argument("--rviz-only", action="store_true",
-                        help="Use the rviz-only config variant. Implied by --config.")
+    variant = ap.add_mutually_exclusive_group()
+    variant.add_argument("--headless", action="store_true",
+                         help="Use the headless config variant. Ignored when --config "
+                              "is passed.")
+    variant.add_argument("--rviz-only", action="store_true",
+                         help="Use the rviz-only config variant. Ignored when --config "
+                              "is passed.")
+    variant.add_argument("--indoor", action="store_true",
+                         help="Use the indoor config variant (short-range preprocessing, "
+                              "finer voxels, tighter loop search). Ignored when --config "
+                              "is passed.")
     args = ap.parse_args()
 
     if args.config == DEFAULT_CONFIG and _SHARE is not None:
@@ -193,6 +200,8 @@ def main():
             args.config = _SHARE / "config" / CONFIG_VARIANTS["headless"]
         elif args.rviz_only:
             args.config = _SHARE / "config" / CONFIG_VARIANTS["rviz_only"]
+        elif args.indoor:
+            args.config = _SHARE / "config" / CONFIG_VARIANTS["indoor"]
     log(f"using config: {args.config}")
 
     if args.config is None or not (args.config / "config.json").exists():

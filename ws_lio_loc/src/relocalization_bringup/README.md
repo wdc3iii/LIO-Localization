@@ -26,9 +26,10 @@ relocalization_bringup/
 | `scan_lock.yaml` | `relocalization.launch.py` | scan_lock config for FAST-LIO2 pipeline |
 | `scan_lock_spark.yaml` | `relocalization_spark.launch.py` | scan_lock config for SPARK pipeline |
 | `consolidate_map.yaml` | `consolidate_map` | Map consolidation settings |
-| `glim_mid360/` | `run_glim_bag.py`, `run_glim_chunked.py` | GLIM config dir for Mid360 — Iridescence GUI + RViz publisher (default) |
+| `glim_mid360/` | `run_glim_bag.py`, `run_glim_chunked.py` | GLIM config dir for Mid360 — Iridescence GUI + RViz publisher, outdoor-tuned (default) |
 | `glim_mid360_rviz/` | (same, `--rviz-only`) | RViz publisher only — no native GUI window |
 | `glim_mid360_headless/` | (same, `--headless`) | No viewers at all — dump file only |
+| `glim_mid360_indoor/` | (same, `--indoor`) | Short-range preprocessing, finer voxels, tighter loop search — for indoor mapping |
 
 ## Lidar Drivers
 
@@ -224,18 +225,21 @@ ply_to_pcd in.ply out.pcd --no-voxel        # no downsampling, full resolution
 ply_to_pcd in.ply out.pcd --ascii           # write ASCII PCD (debugging only — 3x larger)
 ```
 
-#### Viewer variants
+#### Config variants
 
-GLIM has two viewer extension modules: `libstandard_viewer.so` (native Iridescence window) and `librviz_viewer.so` (publishes ROS topics for RViz). Three sibling config directories pre-select different combinations, picked via flags on the runner scripts:
+Four sibling config directories ship in [config/](config/), each pre-tuned for a different scenario. Both runner scripts accept matching flags to pick the variant:
 
-| Variant | Config dir | Iridescence GUI | RViz topics | Pick via |
-|---|---|---|---|---|
-| **default** | `glim_mid360/` | ✓ | ✓ | (no flag) |
-| **rviz-only** | `glim_mid360_rviz/` | ✗ | ✓ | `--rviz-only` |
-| **headless** | `glim_mid360_headless/` | ✗ | ✗ | `--headless` |
+| Variant | Config dir | Iridescence GUI | RViz topics | Tuning | Pick via |
+|---|---|---|---|---|---|
+| **default** | `glim_mid360/` | ✓ | ✓ | outdoor / mid-range | (no flag) |
+| **rviz-only** | `glim_mid360_rviz/` | ✗ | ✓ | outdoor / mid-range | `--rviz-only` |
+| **headless** | `glim_mid360_headless/` | ✗ | ✗ | outdoor / mid-range | `--headless` |
+| **indoor** | `glim_mid360_indoor/` | ✓ | ✓ | indoor (short-range, fine voxels) | `--indoor` |
+
+The four flags are mutually exclusive — combining e.g. `--indoor --headless` would need a 5th compound dir, which isn't built. If you need a combination, pass `--config /path/to/your/dir` explicitly and the flags drop out.
 
 ```bash
-# Default: opens the Iridescence window + publishes RViz topics
+# Default (outdoor, full viz): opens Iridescence + publishes RViz topics
 ros2 run relocalization_bringup run_glim_bag.py \
     --bag /path/to/bag --output-dir src/relocalization_bringup/glim_maps/run
 
@@ -249,11 +253,37 @@ ros2 run relocalization_bringup run_glim_bag.py \
 # safe over SSH with no display, fine for CI / batch reprocessing.
 ros2 run relocalization_bringup run_glim_bag.py \
     --bag /path/to/bag --output-dir src/relocalization_bringup/glim_maps/run --headless
+
+# Indoor: short-range preprocessing, finer voxels, tighter loop search.
+# Use for buildings / labs / corridors. Defaults to GUI + RViz viz.
+ros2 run relocalization_bringup run_glim_bag.py \
+    --bag /path/to/bag --output-dir src/relocalization_bringup/glim_maps/run --indoor
 ```
 
-Same three flags apply to `run_glim_chunked.py`. The flags are a no-op if you also pass `--config /some/explicit/path` — that path wins, since you've taken responsibility for picking a config dir.
+All four flags apply to `run_glim_chunked.py` too. They're a no-op if you also pass `--config /some/explicit/path` — that path wins, since you've taken responsibility for picking a config dir.
 
-Under the hood the variant dirs just symlink to the default's sub-configs (`config_sensors.json`, `config_global_mapping_*.json`, …) and override only `config_ros.json`. Editing the default config (e.g. switching between `_cpu`/`_gpu` global mapping) automatically propagates to all three variants — there's no fork to keep in sync.
+##### What the indoor variant changes
+
+| File | Param | Default (outdoor) | Indoor | Why |
+|---|---|---|---|---|
+| `config_preprocess.json` | `distance_far_thresh` | 100.0 m | **30.0 m** | Indoor walls return at 5–20 m; beyond that is mostly specular / through-glass noise |
+| `config_preprocess.json` | `downsample_resolution` | 1.0 m | **0.25 m** | Preserve doorway/furniture detail (1 m voxels lose chairs entirely) |
+| `config_sub_mapping_*.json` | `submap_voxel_resolution` | 0.5 m | **0.25 m** | Match indoor scale |
+| `config_sub_mapping_*.json` | `keyframe_update_interval_trans` | 1.0 m / 0.1 m | **0.5 m / 0.05 m** | More keyframes per submap in tight spaces → more intra-submap constraints |
+| `config_sub_mapping_gpu/cpu.json` | `keyframe_voxel_resolution` | 0.25 m | **0.1 m** | Finer registration target |
+| `config_global_mapping_gpu.json` | `submap_voxel_resolution_{max,dmin,dmax}` | 1.0 / 5.0 / 20.0 m | **0.5 / 2.0 / 10.0 m** | Adaptive voxel scaling kicks in at indoor distances |
+| `config_global_mapping_*.json` | `max_implicit_loop_distance` | 100.0 m | **30.0 m** | Indoor loops happen at short range; wider search wastes pose-graph factors |
+
+Odometry (`config_odometry_*.json`), IMU noise (`config_sensors.json`), the topic / viewer choice (`config_ros.json`), and the optimizer settings are unchanged between variants — only what's listed above differs.
+
+#### Symlink layout
+
+Under the hood each variant dir overrides only the files it needs and symlinks the rest back to canonical `glim_mid360/`:
+
+- `glim_mid360_rviz/` / `glim_mid360_headless/` → real `config_ros.json` (viewer modules differ), everything else symlinked
+- `glim_mid360_indoor/` → real `config_preprocess.json`, `config_sub_mapping_{cpu,gpu,passthrough}.json`, `config_global_mapping_{cpu,gpu}.json` (6 files), everything else symlinked
+
+Editing the canonical config (e.g. switching `config_global_mapping` between `_cpu` / `_gpu` in `config.json`, or bumping `T_lidar_imu` in `config_sensors.json`) automatically propagates to all variants — there's no fork to keep in sync.
 
 ### Consolidate PCD Map
 

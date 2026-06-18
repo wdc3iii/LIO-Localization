@@ -37,13 +37,15 @@ try:
 except Exception:
     _SHARE = None
 
-# Viewer variants are sibling config dirs. --headless / --rviz-only just
-# pick a different one; the only difference is the extension_modules list
-# in config_ros.json.
+# Variants are sibling config dirs. --headless / --rviz-only swap the viewer
+# extension_modules in config_ros.json; --indoor swaps preprocess / submap /
+# global_mapping tuning to short-range, fine-voxel values. The flags are
+# mutually exclusive at the CLI -- combinations would need a 2D dir grid.
 CONFIG_VARIANTS = {
-    "default": "glim_mid360",        # iridescence GUI + RViz topics
+    "default": "glim_mid360",        # iridescence GUI + RViz topics, outdoor tuning
     "rviz_only": "glim_mid360_rviz", # RViz topics only
     "headless": "glim_mid360_headless",
+    "indoor": "glim_mid360_indoor",  # indoor-tuned preprocess / submap / global mapping
 }
 
 DEFAULT_CONFIG = (_SHARE / "config" / CONFIG_VARIANTS["default"]) if _SHARE else None
@@ -100,21 +102,30 @@ def main():
                     help="max seconds to wait for glim to write its dump")
     ap.add_argument("--rate", type=float, default=1.0,
                     help="ros2 bag play rate (default 1.0)")
-    viewer = ap.add_mutually_exclusive_group()
-    viewer.add_argument("--headless", action="store_true",
-                        help="Use the headless config variant (no Iridescence GUI, "
-                             "no RViz publisher). Implied by --config.")
-    viewer.add_argument("--rviz-only", action="store_true",
-                        help="Use the rviz-only config variant (no Iridescence GUI, "
-                             "keeps RViz publisher). Implied by --config.")
+    variant = ap.add_mutually_exclusive_group()
+    variant.add_argument("--headless", action="store_true",
+                         help="Use the headless config variant (no Iridescence GUI, "
+                              "no RViz publisher). Mutually exclusive with --indoor "
+                              "/ --rviz-only; ignored when --config is passed.")
+    variant.add_argument("--rviz-only", action="store_true",
+                         help="Use the rviz-only config variant (no Iridescence GUI, "
+                              "keeps RViz publisher). Mutually exclusive with --indoor "
+                              "/ --headless; ignored when --config is passed.")
+    variant.add_argument("--indoor", action="store_true",
+                         help="Use the indoor config variant (short-range preprocessing, "
+                              "finer voxels, tighter loop search). Mutually exclusive "
+                              "with --headless / --rviz-only; ignored when --config is "
+                              "passed.")
     args = ap.parse_args()
 
-    # Resolve viewer variant unless the caller explicitly passed --config.
+    # Resolve variant unless the caller explicitly passed --config.
     if args.config == DEFAULT_CONFIG and _SHARE is not None:
         if args.headless:
             args.config = _SHARE / "config" / CONFIG_VARIANTS["headless"]
         elif args.rviz_only:
             args.config = _SHARE / "config" / CONFIG_VARIANTS["rviz_only"]
+        elif args.indoor:
+            args.config = _SHARE / "config" / CONFIG_VARIANTS["indoor"]
 
     if args.config is None or not (args.config / "config.json").exists():
         sys.exit(f"glim config dir missing config.json: {args.config}")
