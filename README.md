@@ -179,3 +179,31 @@ Once inside tmux:
 - `Prefix n` / `Prefix p` — next/previous window
 - `Prefix [` — enter scroll/copy mode (exit with `q`)
 - `Prefix :` — enter command mode
+
+## License
+
+The first-party code in this repository — the `relocalization_bringup` package,
+launch files, configs, RViz layouts, Docker setup, and workspace scripts — is
+released under the **BSD 3-Clause License**. See [`LICENSE`](LICENSE).
+
+```
+Copyright (c) 2026 California Institute of Technology and Will Compton
+```
+
+### Third-party components
+
+This workspace bundles several components as Git submodules, each under its own
+license. The BSD-3-Clause license above does **not** apply to them — refer to
+the `LICENSE` file inside each submodule:
+
+| Component | Location | License |
+|---|---|---|
+| FAST-LIO2 | `ws_lio_loc/src/FAST_LIO` | GPL-2.0-only |
+| SPARK Fast-LIO2 | `ws_lio_loc/src/spark-fast-lio` | MIT (MIT-SPARK) |
+| ScanLock | `ws_lio_loc/src/scan_lock` | see submodule |
+
+> **Note on redistribution:** FAST-LIO2 is licensed GPL-2.0-only. If you
+> distribute a combined binary that links FAST-LIO2's code, the GPL's terms may
+> apply to that combined work. The bringup package launches FAST-LIO2 as a
+> separate process rather than linking it, but consult the individual licenses
+> (and, for Caltech-owned work, OTTCP) before redistributing.

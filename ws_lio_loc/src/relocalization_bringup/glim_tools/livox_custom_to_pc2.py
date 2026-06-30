@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 California Institute of Technology and Will Compton
 """Relay node: livox_ros_driver2/CustomMsg -> sensor_msgs/PointCloud2.
 
 GLIM subscribes to PointCloud2 but the Mid360 driver publishes CustomMsg. This

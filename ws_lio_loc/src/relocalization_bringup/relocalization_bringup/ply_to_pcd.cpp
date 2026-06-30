@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 California Institute of Technology and Will Compton
+//
 // Convert a PLY (e.g. from GLIM's offline_viewer Export -> Points) into the
 // binary PCD format that scan_lock loads. Optionally voxel-downsamples the
 // output (default voxel 0.05 m, matching consolidate_map.yaml). Reports the

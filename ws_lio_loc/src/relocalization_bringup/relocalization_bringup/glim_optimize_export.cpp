@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 California Institute of Technology and Will Compton
+//
 // Headless replacement for GLIM's offline_viewer "Optimize" + "Export Points"
 // menu items. Takes a GLIM dump directory (graph.bin + values.bin + per-submap
 // dirs + config/), runs iSAM2 optimization, and writes a binary PLY of the

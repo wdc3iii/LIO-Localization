@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 California Institute of Technology and Will Compton
+
 #include <iostream>
 #include <fstream>
 #include <sstream>

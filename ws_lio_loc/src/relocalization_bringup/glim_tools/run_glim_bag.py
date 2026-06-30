@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 California Institute of Technology and Will Compton
 """Single-shot GLIM mapping over a whole ROS 2 bag.
 
 Spawns three child processes in order:
