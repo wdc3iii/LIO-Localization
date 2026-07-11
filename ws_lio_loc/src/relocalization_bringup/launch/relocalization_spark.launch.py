@@ -62,7 +62,7 @@ def generate_launch_description():
         description='spark_fast_lio config file'
     ))
     ld.add_action(DeclareLaunchArgument(
-        'rviz', default_value='true',
+        'rviz', default_value='false',
         description='Use RViz to monitor results'
     ))
     ld.add_action(DeclareLaunchArgument(
