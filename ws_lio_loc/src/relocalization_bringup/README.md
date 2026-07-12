@@ -51,6 +51,36 @@ ros2 launch relocalization_bringup hesaiJT128.launch.py
 
 ## Usage
 
+### Recording a bag
+
+To record a bag for later offline mapping (FAST-LIO2, SPARK, or GLIM), record the raw Livox driver topics. Launch the lidar driver in one terminal:
+
+```bash
+ros2 launch relocalization_bringup mid360.launch.py
+```
+
+Then start recording in a second terminal (from `ws_lio_loc/`):
+
+```bash
+ros2 bag record /livox/lidar /livox/imu -o src/relocalization_bringup/bags/<recording_name>
+```
+
+Stop with `Ctrl-C` when done. The two topics are:
+
+| Topic | Type | Rate |
+|---|---|---|
+| `/livox/lidar` | `livox_ros_driver2/msg/CustomMsg` | 10 Hz (driver `publish_freq`) |
+| `/livox/imu` | `sensor_msgs/msg/Imu` | ~200 Hz |
+
+Notes:
+
+- Record the **driver topics only** — don't record LIO output topics (`/Odometry`, `/cloud_registered`, TF, etc.) if the goal is to re-run a LIO backend on the bag later; recording them wastes space and replaying TF can conflict with the live pipeline.
+- `/livox/lidar` is a Livox `CustomMsg`, not a `PointCloud2`. Any machine playing back the bag needs `livox_ros_driver2` sourced (e.g. `source ~/repos/ws_livox/install/setup.bash`) so the message type resolves. The GLIM helper scripts relay CustomMsg → `/livox/points` (`PointCloud2`) automatically during replay.
+- Before recording, sanity-check that both topics are alive: `ros2 topic hz /livox/lidar` and `ros2 topic hz /livox/imu`.
+- Do **not** launch mapping or relocalization while recording (it isn't needed, and PCD saving will churn the disk). The bag only needs the driver running.
+
+To replay, see [Replay a bag file](#replay-a-bag-file) below (mapping with `use_sim_time:=true` + `ros2 bag play --clock`), or feed the bag to GLIM via `run_glim_bag.py` / `run_glim_chunked.py` (see the GLIM section).
+
 ### Mapping
 
 First launch the lidar driver (see above), then in a second terminal:
@@ -163,14 +193,7 @@ A Mid360-specific GLIM config dir lives at [config/glim_mid360/](config/glim_mid
 
 The full GLIM workflow takes a recorded bag and produces a `map.pcd` in `scan_lock/pcd/` ready for relocalization. Four steps:
 
-**1. Record (or already have) a bag.** Bag should publish `/livox/lidar` (CustomMsg) and `/livox/imu`:
-
-```bash
-ros2 launch relocalization_bringup mid360.launch.py    # T1: lidar driver
-ros2 bag record /livox/lidar /livox/imu -o bags/my_recording   # T2: record
-```
-
-The helper scripts handle the CustomMsg → PointCloud2 relay automatically when replaying.
+**1. Record (or already have) a bag.** The bag should contain `/livox/lidar` (CustomMsg) and `/livox/imu` — see [Recording a bag](#recording-a-bag) above. The helper scripts handle the CustomMsg → PointCloud2 relay automatically when replaying.
 
 **2. Run GLIM on the bag.** Two variants depending on bag length:
 
