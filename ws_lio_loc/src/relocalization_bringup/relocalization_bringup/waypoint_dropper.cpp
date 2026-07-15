@@ -27,6 +27,8 @@
 #include <interactive_markers/interactive_marker_server.hpp>
 #include <interactive_markers/menu_handler.hpp>
 
+#include "pcd_path.h"
+
 #include <tf2/utils.h>
 #include <yaml-cpp/yaml.h>
 
@@ -72,15 +74,21 @@ public:
       throw std::runtime_error("No PCD file specified");
     }
 
-    std::string pcd_path = std::string(ROOT_DIR) + "pcd/" + pcd_file_name;
+    std::string pcd_file_path;
+    try {
+      pcd_file_path = pcd_path::resolve_pcd_path(pcd_file_name, ROOT_DIR);
+    } catch (const std::exception& e) {
+      RCLCPP_FATAL(get_logger(), "%s", e.what());
+      throw;
+    }
     map_cloud_ = std::make_shared<PointCloud>();
-    if (pcl::io::loadPCDFile<PointType>(pcd_path, *map_cloud_) == -1) {
+    if (pcl::io::loadPCDFile<PointType>(pcd_file_path, *map_cloud_) == -1) {
       RCLCPP_FATAL(get_logger(), "Failed to load PCD: %s",
-                   pcd_path.c_str());
-      throw std::runtime_error("Failed to load PCD: " + pcd_path);
+                   pcd_file_path.c_str());
+      throw std::runtime_error("Failed to load PCD: " + pcd_file_path);
     }
     RCLCPP_INFO(get_logger(), "Loaded map with %zu points from %s",
-                map_cloud_->size(), pcd_path.c_str());
+                map_cloud_->size(), pcd_file_path.c_str());
 
     // Publish downsampled map (latched)
     auto qos = rclcpp::QoS(1).transient_local();
