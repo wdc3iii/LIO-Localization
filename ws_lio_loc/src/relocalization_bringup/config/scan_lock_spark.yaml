@@ -19,6 +19,7 @@
 
     topics:
       lidar_topic: "cloud_registered"  # Point cloud topic to subscribe to
+      level_point_topic: "/clicked_point"  # RViz "Publish Point" tool topic (level select)
 
     initial_guess:                   # Initial robot pose in map frame
       use_default: false             # true = use x/y/z/rpy below; false = wait for /initialpose
@@ -31,3 +32,15 @@
       ground_search_radius_x: 5.0   # Half-width (m) for ground height search region
       ground_search_radius_y: 5.0   # Half-width (m) for ground height search region
       ground_percentile: 0.05       # Robust ground z (5th percentile of z values)
+      # Levels ("floors"): confine the ground search to one storey of a
+      # multi-storey map. Without a level the whole z column is searched, which
+      # on a multi-storey map snaps the initial pose to the lowest floor.
+      use_clicked_point_level: true # Click a floor with RViz "Publish Point" to select its storey
+      level_band_below: 0.25        # Points this far below the level still count as its floor.
+                                    # Must stay inside the slab between a storey's ceiling and the
+                                    # floor above it (~0.3m), or the ceiling below wins the search.
+      level_band_above: 2.5         # ... and this far above (keep below floor-to-ceiling height)
+      level_snap_tolerance: 1.0     # A click within this of a detected floor snaps to it
+      level_detect_min_fraction: 0.02  # Min share of map points in a 10cm slab to count as a floor
+      use_level_z: false            # true = start on the level_z below instead of waiting for a click
+      level_z: 0.0                  # Floor height (m) of the starting level

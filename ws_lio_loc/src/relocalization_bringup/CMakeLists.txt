@@ -58,6 +58,23 @@ ament_target_dependencies(waypoint_dropper
 target_compile_features(waypoint_dropper PRIVATE cxx_std_17)
 target_compile_definitions(waypoint_dropper PRIVATE ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
 
+# Add crop_map executable (crop a map PCD to a waypoint route's region)
+add_executable(crop_map
+  relocalization_bringup/crop_map.cpp
+)
+
+target_link_libraries(crop_map
+  ${PCL_LIBRARIES}
+  yaml-cpp
+)
+
+target_include_directories(crop_map PRIVATE
+  ${PCL_INCLUDE_DIRS}
+)
+
+target_compile_features(crop_map PRIVATE cxx_std_17)
+target_compile_definitions(crop_map PRIVATE ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
+
 # Add ply_to_pcd executable (PLY -> PCD converter for GLIM exports)
 add_executable(ply_to_pcd
   relocalization_bringup/ply_to_pcd.cpp
@@ -91,7 +108,7 @@ else()
 endif()
 
 # Install executables
-install(TARGETS consolidate_map waypoint_dropper ply_to_pcd ${_optional_targets}
+install(TARGETS consolidate_map waypoint_dropper crop_map ply_to_pcd ${_optional_targets}
   DESTINATION lib/${PROJECT_NAME}
 )
 

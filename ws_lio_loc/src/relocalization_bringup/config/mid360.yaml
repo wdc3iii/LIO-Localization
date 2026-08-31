@@ -1,7 +1,12 @@
 /**:
     ros__parameters:
         feature_extract_enable: false
-        point_filter_num: 1
+        # Applied AFTER deskewing, to the LIO cloud only: keep 1 of every N points.
+        # The dense publish and (optionally) the PCD map keep all of them.
+        point_filter_num: 3
+        # Applied in preprocess, before deskewing, so it thins EVERYTHING downstream.
+        # Leave at 1 unless the raw scan rate itself is the bottleneck.
+        point_filter_num_for_preprocessing: 1
         max_iteration: 3
         filter_size_surf: 0.5
         filter_size_map: 0.5
@@ -27,7 +32,12 @@
         preprocess:
             lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for any other pointcloud input
             scan_line:  4
-            blind: 0.5
+            # Cut applied in preprocess -- affects the LIO *and* every published cloud.
+            # Keep this tight: just enough to drop returns off the sensor housing.
+            blind: 0.05
+            # Additional cut applied after deskewing, to the LIO cloud only. Tested
+            # against each point's raw pre-deskew range, so the radius is exact.
+            blind_lio: 1.0
             timestamp_unit: 3
             scan_rate: 10
 
@@ -50,8 +60,11 @@
             map_en: false                 # true: publish Map cloud
             scan_publish_en:  true        # false: close all the point cloud output
             dense_publish_en: true        # false: low down the points number in a global-frame point clouds scan.
+            dense_full_publish_en: true   # true: publish /cloud_registered_dense -- the full deskewed
+                                          #       scan, bypassing point_filter_num and blind_lio
             scan_bodyframe_pub_en: false  # true: output the point cloud scans in IMU-body-frame
 
         pcd_save:
             pcd_save_en: true
+            dense: true                   # true: save the full deskewed cloud instead of the LIO cloud
             interval: 100                 # how many LiDAR frames saved in each pcd file;

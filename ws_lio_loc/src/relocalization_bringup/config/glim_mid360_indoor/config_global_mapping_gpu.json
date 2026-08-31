@@ -37,6 +37,35 @@
     "create_between_factors": false,
     "between_registration_type": "GICP",
     // Registration error factors
+    // Indoor loop-closure gating, retuned after gates_thomas / ann_0_a came out as
+    // two locally-correct halves offset from each other. GLIM puts NO robust kernel
+    // on the VGICP matching-cost factors (no Huber/Cauchy anywhere in
+    // global_mapping.cpp), and each accepted submap pair contributes
+    // submap_voxelmap_levels factors, so one false match pulls at full strength and
+    // ISAM2 can never remove it. The defence has to be admission control here.
+    //   use_isam2_dogleg      false -> true : trust-region instead of Gauss-Newton;
+    //                                GN takes wild steps once the graph is conflicted.
+    //   min_implicit_loop_overlap 0.2 -> 0.10 : MEASURED, not guessed. 0.35 was tried
+    //                                first on a false-positive theory and made both test
+    //                                maps no better or worse (ann_0_a revisit consistency
+    //                                2.35 m -> 5.00 m median). The real failure is
+    //                                STARVATION: in gates_thomas 12 of 24 stairwell
+    //                                submaps had zero long-range factors vs 23/115 on the
+    //                                level floors, so the stairwell acts as an
+    //                                unconstrained hinge and the floors above and below it
+    //                                swing apart. Descending one flight and ascending a
+    //                                different one leaves only the landing as shared
+    //                                surface, so real loop pairs score low overlap and
+    //                                need a low gate to be admitted. Do NOT go
+    //                                above ~0.4 -- create_matching_cost_factors falls
+    //                                back to a rigid Precision(6,1e6) BetweenFactor
+    //                                when previous_overlap < max(0.25, this), which
+    //                                would weld the chain and stop good loops closing.
+    //                                Paired with max_num_keyframes 15 -> 8 in
+    //                                config_sub_mapping_*.json, which raises
+    //                                consecutive-submap overlap to keep headroom.
+    // max_implicit_loop_distance deliberately left at 30: measurement showed the good
+    // maps press against it too, so it is not the binding constraint.
     "registration_error_factor_type": "VGICP_GPU",
     "randomsampling_rate": 1.0,
     "submap_voxel_resolution": 0.25,
@@ -46,9 +75,9 @@
     "submap_voxelmap_levels": 2,
     "submap_voxelmap_scaling_factor": 2.0,
     "max_implicit_loop_distance": 30.0,
-    "min_implicit_loop_overlap": 0.2,
+    "min_implicit_loop_overlap": 0.10,
     // Optimizer settings
-    "use_isam2_dogleg": false,
+    "use_isam2_dogleg": true,
     "isam2_relinearize_skip": 1,
     "isam2_relinearize_thresh": 0.1
   }

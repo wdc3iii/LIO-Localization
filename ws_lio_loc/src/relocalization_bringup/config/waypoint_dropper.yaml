@@ -1,16 +1,45 @@
 /**:
   ros__parameters:
     waypoint_dropper:
-      pcd_file_name: "caltech_0/map.pcd"  # PCD filename (relative to scan_lock/pcd/)
+      # pcd_file_name: "tii_demo_ath/map.pcd"  # PCD map: rel. name (under <pkg>/pcd/), absolute path, or $ENV_VAR path
+      pcd_file_name: "caltech_scan/map.pcd"  # PCD map: rel. name (under <pkg>/pcd/), absolute path, or $ENV_VAR path
       map_viz_voxel_size: 0.25        # Voxel size (m) for map visualization downsample
-      input_waypoint_file: "waypoints_caltech.yaml"         # Path to existing waypoint YAML to load (empty = none)
+      input_waypoint_file: ""         # Path to existing waypoint YAML to load (empty = none)
       insert_index: -1                # Insertion index for new waypoints (-1 = append)
 
     frames:
       map_frame: "map"                # Map frame (parent of odom)
       body_frame: "body"              # Body frame (child of imu via static TF)
 
+    topics:
+      level_point_topic: "/clicked_point"  # RViz "Publish Point" tool topic (level select)
+
     ground_estimation:
       ground_search_radius_x: 5.0    # Half-width (m) for ground height search region
       ground_search_radius_y: 5.0    # Half-width (m) for ground height search region
       ground_percentile: 0.05        # Robust ground z (5th percentile of z values)
+
+    # Levels ("floors"). A level is a named horizontal plane at height z; only
+    # map points within [z - band_below, z + band_above] count as belonging to
+    # it, so ground estimation on a multi-storey map can't fall through to the
+    # floor below. Click a floor with RViz "Publish Point" to select the level
+    # new waypoints land on; "2D Pose Estimate" then sets x/y/yaw on it.
+    # With no level active, ground estimation searches the whole z column, as
+    # it did before levels existed.
+    levels:
+      enable: true                   # false = always use the full z column
+      band_below: 0.25               # Points this far below the level still count as its floor.
+                                     # Must stay inside the slab between a storey's ceiling and the
+                                     # floor above it (~0.3m), or the ceiling below wins the search.
+      band_above: 2.5                # ... and this far above (keep below floor-to-ceiling height)
+      merge_tolerance: 1.0           # A click within this of a known level selects it (else a new one).
+                                     # Covers clicking a table top or a step instead of the floor.
+      auto_detect: true              # Seed the level list from a z-histogram of the map at startup
+      detect_min_fraction: 0.02      # Min share of map points in a 10cm slab to count as a floor
+      hide_other_levels: false       # true = hide markers that aren't on the active level (else dim them)
+      active: ""                     # Active level at startup ("" = none). Settable at runtime:
+                                     #   ros2 param set /waypoint_dropper levels.active L1
+      # Levels known ahead of time. Both lists must be the same length; leave
+      # them out entirely to rely on auto_detect + clicking.
+      # names: ["ground", "second"]
+      # heights: [0.0, 4.2]

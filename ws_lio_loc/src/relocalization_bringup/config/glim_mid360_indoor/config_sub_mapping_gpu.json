@@ -36,9 +36,21 @@
     "enable_imu": true,
     "enable_optimization": false,
     // Keyframe update strategy
-    "max_num_keyframes": 15,
+        // 8 (not 15) so submaps are issued ~2x more often: smaller submaps overlap their
+    // neighbours more, which is what allows min_implicit_loop_overlap to be raised to
+    // 0.35 in config_global_mapping_*.json without tripping the rigid-between-factor
+    // fallback. gates_thomas ran 9.1 m of path per submap; the maps that came out
+    // clean ran ~2 m.
+    "max_num_keyframes": 8,
     "keyframe_update_strategy": "OVERLAP",
     "keyframe_update_min_points": 500,
+    // NOTE: keyframe_update_interval_{rot,trans} below are read by SubMapping
+    // but consumed ONLY in the "DISPLACEMENT" branch. With
+    // keyframe_update_strategy = "OVERLAP" (as set here) keyframe insertion is
+    // decided purely by max_keyframe_overlap, so the indoor 1.0 -> 0.5 m value
+    // has no effect. Left in place so the file still reads correctly if the
+    // strategy is ever switched. To actually densify keyframes indoors, raise
+    // max_keyframe_overlap (higher = insert sooner); 0.6 is the outdoor value.
     "keyframe_update_interval_rot": 3.14,
     "keyframe_update_interval_trans": 0.5,
     "max_keyframe_overlap": 0.6,

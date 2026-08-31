@@ -25,6 +25,7 @@ relocalization_bringup/
 | `hesaiJT128_driver.yaml` | `hesaiJT128.launch.py` | Hesai ROS driver config (UDP, correction file paths) |
 | `scan_lock.yaml` | `relocalization.launch.py` | scan_lock config for FAST-LIO2 pipeline |
 | `scan_lock_spark.yaml` | `relocalization_spark.launch.py` | scan_lock config for SPARK pipeline |
+| `waypoint_dropper.yaml` | `waypoint_dropper.launch.py` | Waypoint dropper: map, ground estimation, levels |
 | `consolidate_map.yaml` | `consolidate_map` | Map consolidation settings |
 | `glim_mid360/` | `run_glim_bag.py`, `run_glim_chunked.py` | GLIM config dir for Mid360 — Iridescence GUI + RViz publisher, outdoor-tuned (default) |
 | `glim_mid360_rviz/` | (same, `--rviz-only`) | RViz publisher only — no native GUI window |
@@ -159,6 +160,8 @@ ros2 launch relocalization_bringup relocalization.launch.py robot_name:=go2 lio_
 
 In RViz, use the **2D Pose Estimate** tool to provide an initial pose guess. `scan_lock` will refine the estimate via ICP registration.
 
+The tool only supplies x/y/yaw; the height comes from the map, as a low percentile of the z values in a box around x/y. On a multi-storey map that box spans every floor and the percentile lands on the lowest one, so first click the floor you are on with the **Publish Point** tool. `scan_lock` snaps the click to the nearest floor it detected in the map and confines its height search to that storey — see [Multi-storey maps: levels](#multi-storey-maps-levels). The same click crops `pose_prompt`'s fine cloud to that storey, so one click sets up both. Level parameters live under `initial_guess:` in `scan_lock.yaml` (`use_clicked_point_level`, `level_band_below`, `level_band_above`, `level_snap_tolerance`) and under `pose_prompt:` in `pose_prompt.yaml` (`level_crop_enable`, `level_band_below`, `level_band_above`).
+
 #### Relocalization Launch Arguments
 
 | Argument | Default | Description |
@@ -171,6 +174,100 @@ In RViz, use the **2D Pose Estimate** tool to provide an initial pose guess. `sc
 | `scan_lock_config_file` | `scan_lock.yaml` / `scan_lock_spark.yaml` | scan_lock config file |
 | `rviz` | `true` | Launch RViz |
 | `rviz_cfg` | `scanlock.rviz` | RViz config file path |
+
+### Dropping waypoints
+
+`waypoint_dropper` loads a PCD map, lets you lay out a route of waypoints in RViz, and writes them to `outputs/waypoints_<timestamp>.yaml` on `Ctrl-C`.
+
+```bash
+ros2 launch relocalization_bringup waypoint_dropper.launch.py
+```
+
+- **2D Pose Estimate** drops a waypoint. The tool supplies x/y/yaw; the height is estimated from the map, as a low percentile of the z values in a box around x/y (so furniture and walls don't lift it off the floor).
+- **Left-click** a marker to set the insertion point; **right-click** for the menu (Insert Before / Insert After / Snap to Active Level / Delete).
+- Insertion point can also be set directly: `ros2 param set /waypoint_dropper waypoint_dropper.insert_index <N>` (`-1` = append).
+- Load an existing route to edit with `waypoint_dropper.input_waypoint_file` (relative paths resolve under `outputs/`).
+
+#### Multi-storey maps: levels
+
+In a single-storey map the height under (x, y) is unambiguous. In a building it isn't: the column above a point holds every floor, ceiling and slab, and a low percentile always returns the *lowest* storey. A **level** fixes that — a named horizontal plane at height z, where only map points within `[z - band_below, z + band_above]` count as that floor. Ground estimation inside that band cannot fall through to the storey below.
+
+Workflow:
+
+1. **Start the dropper.** It peak-picks a z-histogram of the map, logs the floor heights it found, and creates a level per floor (`L0` upwards from the bottom). No level is active yet, so behaviour is unchanged until you pick one.
+2. **Publish Point** on the floor you want. That level becomes active, and `map_cloud_level` is republished with just that storey — turn the full `map_cloud` display off to see it cleanly.
+3. **2D Pose Estimate** as usual. Waypoints now land on the active floor and record which level they belong to.
+4. `Ctrl-C` saves the levels alongside the waypoints.
+
+Two things worth knowing:
+
+- **Click from an orbit view, not top-down.** *Publish Point* raycasts onto the topmost surface under the cursor, which from above is a ceiling. Orbit into the storey, or click on the already-sliced `map_cloud_level`. You can also skip clicking entirely: `ros2 param set /waypoint_dropper levels.active L1` (and `""` to go back to a whole-column search).
+- **Clicking a table or a step is fine.** The clicked height snaps to the nearest known floor within `levels.merge_tolerance` (1 m by default), which covers everything you might realistically click while aiming at a floor.
+
+Waypoints on other levels are dimmed rather than hidden (set `levels.hide_other_levels: true` to hide them), and their labels carry the level name. **Snap to Active Level** on a marker's right-click menu moves an existing waypoint onto the active floor — useful for repairing a route saved before levels existed.
+
+The output gains a `levels:` block and a `level:` key per waypoint; every other field is unchanged, so existing consumers keep working:
+
+```yaml
+levels:
+  - name: L0
+    z: 0.0
+  - name: L1
+    z: 3.3
+waypoints:
+  - x: 5.0
+    y: 5.0
+    z: 3.3
+    roll: 0.0
+    pitch: 0.0
+    yaw: 0.0
+    level: L1
+```
+
+Key parameters (`config/waypoint_dropper.yaml`, under `levels:`):
+
+| Parameter | Default | Description |
+|---|---|---|
+| `enable` | `true` | `false` always searches the full z column (pre-levels behaviour) |
+| `band_below` | `0.25` | How far below a level's height still counts as its floor. Must stay inside the slab between a storey's ceiling and the floor above it (~0.3 m), or the ceiling below wins the search |
+| `band_above` | `2.5` | How far above; keep it under the floor-to-ceiling height |
+| `merge_tolerance` | `1.0` | A click within this of a known level selects it instead of making a new one |
+| `auto_detect` | `true` | Seed the level list from the map's z-histogram at startup |
+| `detect_min_fraction` | `0.02` | Share of map points in a 10 cm slab needed to count as a floor |
+| `hide_other_levels` | `false` | Hide (rather than dim) markers that aren't on the active level |
+| `active` | `""` | Active level at startup; settable at runtime |
+| `names` / `heights` | (unset) | Levels known ahead of time, instead of relying on detection |
+
+### Cropping a map to a waypoint route
+
+A map covering a whole campus is mostly wasted on a route that visits one building. `crop_map` trims a PCD down to the region a waypoint file actually visits:
+
+```bash
+# From ws_lio_loc/
+ros2 run relocalization_bringup crop_map \
+    waypoints_20260830_120000.yaml \
+    caltech_0/map.pcd \
+    src/relocalization_bringup/pcd/caltech_0/map_cropped.pcd
+```
+
+The kept region is the bounding box of every waypoint, padded by **40 m in x/y** and **5 m in z** by default. The x/y footprint is squared up, so the padding is *at least* the requested buffer on every side (the longer axis gets exactly it, the shorter one gets more); `--rect` pads the bounding box directly instead. z is padded but never squared.
+
+Both input paths are used as given if they exist, and otherwise resolve under the package's `outputs/` and `pcd/` directories respectively — so a bare waypoint filename and a bare map name both work, matching `waypoint_dropper`'s conventions. `$ENV` variables are expanded in both.
+
+Every field of the input survives: the cloud is filtered as a raw `PCLPointCloud2`, so a `PointXYZINormal` map from `consolidate_map` comes out `PointXYZINormal`, and a `PointXYZI` map from `ply_to_pcd` comes out `PointXYZI`.
+
+| Option | Default | Description |
+|---|---|---|
+| `--xy-buffer M` | `40` | Minimum padding (m) around the waypoints in x and y |
+| `--z-buffer M` | `5` | Padding (m) below the lowest and above the highest waypoint |
+| `--rect` | (off) | Pad the bounding box by exactly `--xy-buffer`; don't square the footprint |
+| `--dry-run` | (off) | Report the crop box and surviving point count without writing |
+| `--ascii` | (off) | Write ASCII PCD instead of binary |
+| `--copy-to PATH` | — | Also copy the result to PATH (a directory keeps the basename) |
+
+The tool prints the waypoint bounds, the map's own bounds and the crop box before writing, which is the quickest way to catch a waypoint file paired with the wrong map — if the two bounds barely overlap you'll see it immediately, and a crop that keeps nothing is an error rather than an empty file.
+
+Cropping also sharpens [level detection](#multi-storey-maps-levels): `levels.detect_min_fraction` is a share of *all* map points, so trimming away far-off terrain makes a building's floors stand out in the z-histogram.
 
 ### GLIM Mapping (optional, desktop-only)
 
@@ -219,7 +316,7 @@ On `Ctrl-C` (or natural end of bag), the script SIGINTs GLIM so it can write its
 **3. Export a single PLY from GLIM's offline_viewer.** GLIM dumps a session, not a finished map. Open the session and export:
 
 ```bash
-ros2 run glim_ros offline_viewer --ros-args -p init_dump_path:=src/relocalization_bringup/glim_maps/my_run
+ros2 run glim_ros offline_viewer src/relocalization_bringup/glim_maps/my_run
 ```
 
 In the viewer GUI: `File → Export → Points` and save as e.g. `src/relocalization_bringup/glim_maps/my_run/map.ply`. The viewer writes PLY regardless of extension, so a `.pcd` extension here will silently be PLY-format and fail downstream — name it `.ply`.
@@ -289,15 +386,24 @@ All four flags apply to `run_glim_chunked.py` too. They're a no-op if you also p
 
 | File | Param | Default (outdoor) | Indoor | Why |
 |---|---|---|---|---|
-| `config_preprocess.json` | `distance_far_thresh` | 100.0 m | **30.0 m** | Indoor walls return at 5–20 m; beyond that is mostly specular / through-glass noise |
+| `config_preprocess.json` | `distance_far_thresh` | 100.0 m | **50.0 m** | Rooms return at 5–20 m, but corridors don't: side walls, floor and ceiling all run parallel to travel and constrain nothing about distance covered — the end wall is the only geometry that does. A 30 m cut hid it for most of a 40–60 m hallway (along-corridor scale drift). The Mid360 reaches 40 m @ 10% reflectivity, so painted walls return well past 30 m |
 | `config_preprocess.json` | `downsample_resolution` | 1.0 m | **0.25 m** | Preserve doorway/furniture detail (1 m voxels lose chairs entirely) |
 | `config_sub_mapping_*.json` | `submap_voxel_resolution` | 0.5 m | **0.25 m** | Match indoor scale |
-| `config_sub_mapping_*.json` | `keyframe_update_interval_trans` | 1.0 m / 0.1 m | **0.5 m / 0.05 m** | More keyframes per submap in tight spaces → more intra-submap constraints |
+| `config_sub_mapping_*.json` | `keyframe_update_interval_trans` | 1.0 m / 0.1 m | **0.5 m / 0.05 m** | ⚠️ **No-op as configured.** `SubMapping` consumes this only in the `DISPLACEMENT` branch; `keyframe_update_strategy` is `OVERLAP`, so keyframe insertion is decided by `max_keyframe_overlap` (0.6, same in both variants). Overlap is scale-relative so it adapts on its own; to actually densify keyframes indoors, raise `max_keyframe_overlap`. The `_passthrough` value is doubly inert — `config.json` selects `config_sub_mapping_gpu.json`, so that module never loads |
 | `config_sub_mapping_gpu/cpu.json` | `keyframe_voxel_resolution` | 0.25 m | **0.1 m** | Finer registration target |
 | `config_global_mapping_gpu.json` | `submap_voxel_resolution_{max,dmin,dmax}` | 1.0 / 5.0 / 20.0 m | **0.5 / 2.0 / 10.0 m** | Adaptive voxel scaling kicks in at indoor distances |
 | `config_global_mapping_*.json` | `max_implicit_loop_distance` | 100.0 m | **30.0 m** | Indoor loops happen at short range; wider search wastes pose-graph factors |
 
 Odometry (`config_odometry_*.json`), IMU noise (`config_sensors.json`), the topic / viewer choice (`config_ros.json`), and the optimizer settings are unchanged between variants — only what's listed above differs.
+
+Two values in the shared `glim_mid360/config_odometry_gpu.json` were retuned for indoor work but, being shared, now apply to **every** variant:
+
+| Param | Was | Now | Why |
+|---|---|---|---|
+| `full_connection_window_size` | 2 | **4** | Stair climbing pitches the sensor hard between frames. GLIM's own docs call for 3–5 on aggressive motion; connecting the latest pose to more of the recent window is what keeps odometry from breaking on stairs. Costs GPU time, no accuracy downside outdoors |
+| `num_threads` | 2 | **8** | 2 threads bottlenecks offline bag replay on a many-core host (`preprocess.num_threads` in the indoor config was raised to 8 for the same reason) |
+
+**Watch item for multi-floor stairwells:** `max_implicit_loop_distance` of 30 m spans roughly eight floors, and a stairwell is vertically self-similar. `GlobalMapping::find_overlapping_submaps` gates on Euclidean distance and then `min_implicit_loop_overlap` (0.2), which is loose for self-similar geometry. Overlap is evaluated at the *current* pose estimate, so well-separated floors score near zero — the risk only bites once Z drift brings them together, which is exactly when a false closure folds the building. If a multi-floor map comes out with floors collapsed, raise `min_implicit_loop_overlap` to ~0.35 before changing anything else.
 
 #### Symlink layout
 
